@@ -39,7 +39,8 @@ RunModel <- function(dataname='OD',
                      group='combined',form='mean', 
                      outputDIR="/N/u/conlcorn/BigRed200/SexLinkedProject/output",
                      dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData")
-{ # Main function that is called once data is processed
+{ 
+# Main function that is called once data is processed
 #' @param dataname Defines the metric used 
 #' @param dn Defines the dimension used for the ABC model
 #' @param sn Defines the number of MCMC itterations
@@ -88,11 +89,6 @@ RunModel <- function(dataname='OD',
        seed = num, nscan = sn, burn = burns,odens = 10,
        print = TRUE, gof=FALSE, plot=FALSE,
        prior=list())
-
-
-# If you name the model variable df, it fails
-
-#corr <- cor(c(md$EFLPM),c(X_test))
   end <- Sys.time()
   comptime <- as.numeric(difftime(end,start,units = "secs"))
 # Return Model as file for future validation
@@ -100,10 +96,7 @@ RunModel <- function(dataname='OD',
          ,'testX' = X_test,'testY' = Y_test, 'Comptime' = as.numeric(difftime(end,start,units = "secs"))
          #,"validation.id"=validation.id, "test.id"=test.id,"train.id"=train.id #-> Removed for now, will return later 
          )
-
-
   if (!dir.exists(outputDIR)) dir.create(outputDIR,recursive = TRUE)
   setwd(outputDIR)  # When running, we want to change this to a DIR we can access
-  
   saveRDS(res,paste0("ADNI_",dataname,"_",group,"_",form,"_",sn,"_",burns,".rdata")) # Saves the Model as an R Object in the Above DIR
 }
