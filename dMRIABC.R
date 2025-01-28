@@ -6,7 +6,7 @@ library(readr) # Used for reading CSV file faster than the built in r function
 library(dplyr) # used for selecting collums in the read functions
 library(caTools) #Used for splitting data 
 # Source Entire Folder function***
-sourceEntireFolder <- function(folderName, verbose=FALSE, showWarnings=TRUE) { # Takes in Name, Verbosity, and Warnings
+sourceEntireFolder <- function(folderName, verbose=FALSE, showWarnings=TRUE) { # Takes in Name, Verbosity, and Warnings. Sources all files within a folder, one of which being the abc.R file
   files <- list.files(folderName, full.names=TRUE) # Lists all files within the folder
   files <- files[ grepl("\\.[rR]$", files) ]# Grab only R files 
   if (!length(files) && showWarnings) # Activates if there are no R files in the specified folder 
@@ -20,7 +20,7 @@ sourceEntireFolder <- function(folderName, verbose=FALSE, showWarnings=TRUE) { #
   }
   return(invisible(NULL))
 }
-replace_nan_with_NA <- function(list_of_matrices) {
+replace_nan_with_NA <- function(list_of_matrices) { #Model needs NA values instead of nan in which our dataset gives, this fixes the data
   lapply(list_of_matrices, function(matrix) {
     # Convert the matrix to numeric, which will turn any non-numeric values to NA (including 'NaN' strings)
     numeric_matrix <- suppressWarnings(as.numeric(matrix))
@@ -34,21 +34,35 @@ replace_nan_with_NA <- function(list_of_matrices) {
     return(numeric_matrix)
   })
 }
-RunModel <- function(dataname='FA',dn=2,sn,fn=100,num=42,burns=1000,group='combined',form='mean', outputDIR="/N/u/conlcorn/BigRed200/SexLinkedProject/output")
-{
+RunModel <- function(dataname='OD',
+                     dn=2,sn,fn=100,num=42,burns=1000,
+                     group='combined',form='mean', 
+                     outputDIR="/N/u/conlcorn/BigRed200/SexLinkedProject/output",
+                     dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData")
+{ # Main function that is called once data is processed
+#' @param dataname Defines the metric used 
+#' @param dn Defines the dimension used for the ABC model
+#' @param sn Defines the number of MCMC itterations
+#' @param num Defines the seed, and can also be used as an itteration marker
+#' @param burns The number of itterations that are discarded
+#' @param group The group used in the definition 
+#' @param form Defines if it is the mean or median data 
+#' @param outputDIR Declares where the final model will be saved 
+#' @param dataloc defines where the preprocessed data is stored 
+  cpath <- getwd()
   start <- Sys.time()
   set.seed(num)
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/methods")
+  setwd(cpath)
   sourceEntireFolder("code_behavior_updated",verbose = FALSE, showWarnings=TRUE)
 
 # Read the data
   if(dataname == 'meanlength' || dataname == 'numoffibers') features <- paste0(group,"_",dataname,".rds")
   else features <- paste0(group,"_",dataname,"_",form,".rds")
   labels <- paste0(group,"label.rds")
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Features")
+  setwd(paste0(dataloc,"/Features"))
   X <-readRDS(features)
   X_list <- X[[1]]
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Labels")
+  setwd(paste0(dataloc,"/Labels"))
   labeldata <- readRDS(labels)
 # Normalize the X
   labeldata_cleaned <- replace_nan_with_NA(labeldata)
