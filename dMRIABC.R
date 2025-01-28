@@ -64,9 +64,10 @@ RunModel <- function(dataname='OD',
   X <-readRDS(features)
   X_list <- X[[1]]
   setwd(paste0(dataloc,"/Labels"))
-  labeldata <- readRDS(labels)
+  labeldata <- readRDS(labels) #Pull the 
 # Normalize the X
   labeldata_cleaned <- replace_nan_with_NA(labeldata)
+  rm(X,labeldata) # Cleaning variables no longer needed
 # Split for training and Testing sets 
 #Get Validation, Test and Train ID
   train_ratio <- 0.8
