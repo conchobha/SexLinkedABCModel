@@ -1,6 +1,6 @@
 #Used to Run the Final Model after tweaking
 # Source the Needed Functions
-setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/methods")
+setwd(getwd())
 source("dMRIABC.R") # Adds the Functions we need in order to run the model
 #Set up The variables
 
@@ -10,7 +10,7 @@ grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd') # Ensure correct name
 
 args = commandArgs(trailingOnly = TRUE)
 #We are going to be passing the group and replication, group
-group <- grouplist[as.numeric(args[1])] # 5 groups
+group <- grouplist[as.numeric(args[1])] # 6 groups
 dm <- 'OD'
 rep <- 1
 # Pull Which dim we are using 
@@ -18,8 +18,6 @@ rep <- 1
 #dm 1 for FCN, 2 for others 
 d <- 2
 if(group == "fcn"){ d <- 1}
-
-
 
 
 output_loc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/",dm,"/Rep-",rep,"/")
