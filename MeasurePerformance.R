@@ -446,14 +446,6 @@ pull_connect <- function(group1,group2,edge1,edge2){
   return(listcomb)
 }
 
-
-
-
-
-
-
-
-
 find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
 smallest_p_values <- data.frame(p_value = numeric(0), i = integer(0), j = integer(0))
 for (i in 1:84) {
@@ -488,3 +480,8 @@ print(smallest_p_values)
 }
 find_smallest()
 
+findEdge <- function(number){ #Function to search for a given edge name, given its number 
+  edge <- "Left Accubens"
+
+  return(edge)
+}
