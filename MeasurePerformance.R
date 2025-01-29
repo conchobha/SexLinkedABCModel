@@ -472,13 +472,13 @@ find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
         }
       }
     }
+  }
+
+  # Display the results
+  cat("Top 5 smallest p-values and their combinations:\n")
+  print(smallest_p_values)
 }
 
-# Display the results
-cat("Top 5 smallest p-values and their combinations:\n")
-print(smallest_p_values)
-}
-find_smallest()
 
 findEdge <- function(number){ #Function to search for a given edge name, given its number 
   edge <- "Left Accubens"
