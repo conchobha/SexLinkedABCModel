@@ -447,31 +447,31 @@ pull_connect <- function(group1,group2,edge1,edge2){
 }
 
 find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
-smallest_p_values <- data.frame(p_value = numeric(0), i = integer(0), j = integer(0))
-for (i in 1:84) {
-  for (j in 1:84) {
-    d <- pull_connect(g1, g2, i, j)
-    sublist1 <- d[[1]]  # List of length 13
-    sublist2 <- d[[2]]  # List of length 32
-    
-    # Access individual vectors within the sublists
-    sublist1 <- unlist(sublist1)
-    sublist2 <- unlist(sublist2)
-    
-    # Perform a t-test
-    t_test_result <- t.test(sublist1, sublist2)
-    
-    if (!is.na(t_test_result$p.value)) {
-      # Add the current p-value and combination to the data frame
-      smallest_p_values <- rbind(smallest_p_values, data.frame(p_value = t_test_result$p.value, i = i, j = j))
+  smallest_p_values <- data.frame(p_value = numeric(0), i = integer(0), j = integer(0))
+  for (i in 1:84) {
+    for (j in 1:84) {
+      d <- pull_connect(g1, g2, i, j)
+      sublist1 <- d[[1]]  # List of length 13
+      sublist2 <- d[[2]]  # List of length 32
       
-      # Keep only the 5 smallest p-values
-      smallest_p_values <- smallest_p_values[order(smallest_p_values$p_value), ]
-      if (nrow(smallest_p_values) > 5) {
-        smallest_p_values <- smallest_p_values[1:5, ]
+      # Access individual vectors within the sublists
+      sublist1 <- unlist(sublist1)
+      sublist2 <- unlist(sublist2)
+      
+      # Perform a t-test
+      t_test_result <- t.test(sublist1, sublist2)
+      
+      if (!is.na(t_test_result$p.value)) {
+        # Add the current p-value and combination to the data frame
+        smallest_p_values <- rbind(smallest_p_values, data.frame(p_value = t_test_result$p.value, i = i, j = j))
+        
+        # Keep only the 5 smallest p-values
+        smallest_p_values <- smallest_p_values[order(smallest_p_values$p_value), ]
+        if (nrow(smallest_p_values) > 5) {
+          smallest_p_values <- smallest_p_values[1:5, ]
+        }
       }
     }
-  }
 }
 
 # Display the results
