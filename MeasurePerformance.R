@@ -480,8 +480,19 @@ find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
 }
 
 
-findEdge <- function(number){ #Function to search for a given edge name, given its number 
-  edge <- "Left Accubens"
-
-  return(edge)
+findEdge <- function(number,filename ="iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx"){ #Function to search for a given edge name, given its number 
+  library(readxl)
+  if (!(number %in% 1:84)) {
+    warning("Number not in Range")
+    return("Number not in Range")
+  }
+  edge <- "default" #default, in case of error  
+  #Open the file that stores the key 
+  setwd(paste0(dirname(getwd()),"/data")) #Sets Directory to the data directory 
+  data <- 
+  df <- read_excel(filename, sheet = 2)  # Read a specific sheet
+  #Go to the Index
+  result <- df$ICV[df$`...5` == number] 
+  #Return the String 
+  return(result[9]) #Files has a structure R does not like, this works fine however
 }
