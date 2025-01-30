@@ -463,7 +463,7 @@ find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
       
       if (!is.na(t_test_result$p.value)) {
         # Add the current p-value and combination to the data frame
-        smallest_p_values <- rbind(smallest_p_values, data.frame(p_value = t_test_result$p.value, i = i, j = j))
+        smallest_p_values <- rbind(smallest_p_values, data.frame(p_value = t_test_result$p.value, i = findEdge(i), j = findEdge(j)))
         
         # Keep only the 5 smallest p-values
         smallest_p_values <- smallest_p_values[order(smallest_p_values$p_value), ]
@@ -480,18 +480,29 @@ find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
 }
 
 
-findEdge <- function(number,filename ="iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx"){ #Function to search for a given edge name, given its number 
+findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx", dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/") {
+  # Function to search for a given edge name, given its number 
   library(readxl)
+  
   if (!(number %in% 1:84)) {
     warning("Number not in Range")
     return("Number not in Range")
-  } 
-  #Open the file that stores the key 
-  setwd(paste0(dirname(getwd()),"/data")) #Sets Directory to the data directory 
-  df <- read_excel(filename, sheet = 2)  # Read a specific sheet
-  #Go to the Index
+  }
+  
+  # Open the file that stores the key 
+  setwd(dataloc) # Sets Directory to the data directory 
+  
+  # Suppress messages and warnings while reading the Excel file
+  suppressMessages({
+    suppressWarnings({
+      df <- read_excel(filename, sheet = 2)
+    })
+  })
+  
+  # Go to the Index
   result <- df$ICV[df$`...5` == number] 
-  #Return the String 
+  
+  # Return the String 
   rm(df)
-  return(result[9]) #Files has a structure R does not like, this works fine however
+  return(result[9]) # Files have a structure R does not like, this works fine however
 }
