@@ -476,6 +476,7 @@ find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
 
   # Display the results
   cat("Top 5 smallest p-values and their combinations:\n")
+  print(paste0("For ",g1," and ",g2,"\n"))
   print(smallest_p_values)
 }
 
