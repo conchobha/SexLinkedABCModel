@@ -51,7 +51,7 @@ Heatmap <- function( metric, group, value = TRUE){
   # Add custom stepped labels    
   dev.off()
 }
-Traceplot <- function(modelname="ADNI_Da_combined_mean_10000_1000.rdata",metric,filedir){
+Traceplot <- function(modelname="ADNI_Da_combined_mean_10000_1000.rdata",group,filedir){
   setwd(filedir)
   data <- readRDS(modelname)
   model1=data$model
@@ -60,8 +60,8 @@ Traceplot <- function(modelname="ADNI_Da_combined_mean_10000_1000.rdata",metric,
   # model1$TAC
   l <- data$sn/10
   mc1 <- mcmc(data=UVC1[,90:100],start = 1, end = l, thin=1)
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots")
-  pdf(file = paste0(metric,'_Traceplot.pdf'))
+  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/Traceplots")
+  pdf(file = paste0(group,'_Traceplot.pdf'))
   traceplot(mc1,ylab = 'Covariance Estimate')
   dev.off()
 }
@@ -494,7 +494,7 @@ findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84RO
   setwd(dataloc) # Sets Directory to the data directory 
   
   # Suppress messages and warnings while reading the Excel file
-  suppressMessages({
+  suppressMessages({ # Currently slow, could improve by optionally giving it an already loaded file 
     suppressWarnings({
       df <- read_excel(filename, sheet = 2)
     })
@@ -507,3 +507,63 @@ findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84RO
   rm(df)
   return(result[9]) # Files have a structure R does not like, this works fine however
 }
+
+
+
+findavSD <- function(group){
+  #create the 84x84 matrix 
+  SDs <- matrix(NA, nrow = 84, ncol = 84)
+  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Features/")
+  
+  # Assuming `group` is defined
+  
+  
+  for (i in 1:84) {
+    for (j in 1:84) {
+      groupname <- paste0(group, "_OD_mean.rds")
+      data1 <- readRDS(groupname)
+      
+      # Initialize an empty numeric vector to store values
+      list1 <- numeric()
+      
+      # Loop through people in data1[[1]] and extract person[i,j]
+      for (person in data1[[1]]) {
+        # Ensure that person[i,j] is numeric and valid
+        val <- person[i, j]
+        
+        # Only add numeric values to list1, ignoring non-numeric or NA values
+        if (!is.na(val) && is.numeric(val) && val != 0) {
+          list1 <- c(list1, val)
+        }
+      }
+      
+      # Calculate the SD of the filtered list1
+      if (length(list1) > 0) {
+        s <- sd(list1, na.rm = TRUE)  # Use `na.rm = TRUE` to ignore NAs
+        SDs[i, j] <- s
+      } else {
+        SDs[i, j] <- NA  # Assign NA if list1 is empty (no valid data)
+      }
+    }
+  }
+  # Flatten the SDs matrix into a vector, ensuring it's numeric
+  flat_SDs <- as.vector(SDs)
+  
+  # Ensure it's numeric (in case there are any non-numeric values)
+  flat_SDs <- as.numeric(flat_SDs)
+  
+  # Remove any NA or NaN values (including zero if you want)
+  flat_SDs <- flat_SDs[!is.na(flat_SDs) & flat_SDs != 0]
+  
+  # Calculate the overall average SD, if the vector is not empty
+  if(length(flat_SDs) > 0) {
+    avg_SD <- mean(flat_SDs)
+    print(paste0("Average SD for group: ",group))
+    print(avg_SD)
+  } else {
+    print("No valid data to calculate the average SD.")
+  }
+}
+
+grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd')
+
