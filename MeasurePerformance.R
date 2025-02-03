@@ -510,8 +510,8 @@ findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84RO
   return(result[9]) # Files have a structure R does not like, this works fine however
 }
 
-
-
+#Function to sort through a given group, and find the average standard deviation for that group
+#in their raw data. 
 findavSD <- function(group){
   #create the 84x84 matrix 
   SDs <- matrix(NA, nrow = 84, ncol = 84)
