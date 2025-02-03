@@ -65,9 +65,9 @@ Traceplot <- function(modelname="ADNI_Da_combined_mean_10000_1000.rdata",group,f
   traceplot(mc1,ylab = 'Covariance Estimate')
   dev.off()
 }
-Correlation <- function (modelname="ADNI_Dr_combined_mean_10000_1000.rdata"){
+Correlation <- function (modelname="ADNI_Dr_combined_mean_10000_1000.rdata",modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output" ){
   
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output")
+  setwd(modelloc)
   data <- readRDS(modelname)
   model1=data$model
   x_test <- data$testX
@@ -82,12 +82,14 @@ Correlation <- function (modelname="ADNI_Dr_combined_mean_10000_1000.rdata"){
   return(correlations)
   
 }
-histo <- function(modelname,metric){# makes a histogram for the specified model
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output")
+histo <- function(modelname,metric, 
+                  modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output" , 
+                  outputloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots" ){# makes a histogram for the specified model
+  setwd(modelloc)
   data <- readRDS(modelname)
   model1=data$model
   dt <- unlist(model1$EFlPM)
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots")
+  setwd(outputloc)
   pdf(file = paste0(metric,'_histogram.pdf'))
   hist(dt,
        main=paste0("Frequency for values for the EFLPM: ",metric),
