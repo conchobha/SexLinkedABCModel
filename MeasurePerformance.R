@@ -231,22 +231,22 @@ print_values_from_rdata <- function(directory) {
 CI <- function(group = 'f', metric = 'OD', modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1/") {
   library(dplyr)
   setwd(modeldir) # Set the Directory to where we store the models
-  cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_2e+05_1000.rdata") # file name for the cn group
-  mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_2e+05_1000.rdata") # file name for mci group
+  cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_1e+05_1000.rdata") # file name for the cn group
+  mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_1e+05_1000.rdata") # file name for mci group
   
   credible_interval <- function(x) {
     quantile(x, probs = c(0.025, 0.975))
   }
   
   vec1.tmp <- array(rep(0, 84 * 84), dim = c(84, 84))
-  vec1.tmp[c(20, 36, 39, 43, 48,62, 69, 74, 80), ] <- 100
+  vec1.tmp[c(20, 36, 39, 43, 48, 69, 74, 80), ] <- 100
   vv <- vec1.tmp[upper.tri(vec1.tmp, diag = FALSE)]
   index <- which(vv != 0)
   
   # Load CN data
   df <- readRDS(cn_name)
   model1 <- df$model
-  UVC1 <- model1$UVC
+  UVC1 <- model1$UVC[4500:6500,]
   hi.g1 <- t(apply(UVC1, 2, credible_interval))
   rhi.g1 <- hi.g1[index, ]
   UVPM <- model1$UVPM
@@ -265,7 +265,7 @@ CI <- function(group = 'f', metric = 'OD', modeldir = "/N/u/conlcorn/BigRed200/S
   # Load MCI data
   df <- readRDS(mci_name)
   model1 <- df$model
-  UVC1 <- model1$UVC
+  UVC1 <- model1$UVC[4500:6500,]
   hi.g5 <- t(apply(UVC1, 2, credible_interval))
   rhi.g5 <- hi.g5[index, ]
   UVPM <- model1$UVPM
@@ -349,6 +349,7 @@ CI <- function(group = 'f', metric = 'OD', modeldir = "/N/u/conlcorn/BigRed200/S
   dev.off()
   message("Negative connectivity plot saved.")
 }
+
 
 #Finds and Saves the ten regions in the Estimated Connectivity in which has the highest difference between two given models
 find_difference <- function(res=0,model1='ADNI_OD_fmci_mean_2e+05_1000.rdata',model2='ADNI_OD_mmci_mean_2e+05_1000.rdata',modeldir='/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1'){
@@ -446,7 +447,7 @@ pull_connect <- function(group1,group2,edge1,edge2){
   return(listcomb)
 }
 
-find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
+find_smallest <- function(g1 = 'fcn',g2 = 'fmci',test = 't'){
   smallest_p_values <- data.frame(p_value = numeric(0), i = integer(0), j = integer(0))
   for (i in 1:84) {
     for (j in 1:84) {
@@ -459,8 +460,8 @@ find_smallest <- function(g1 = 'fcn',g2 = 'fmci'){
       sublist2 <- unlist(sublist2)
       
       # Perform a t-test
-      t_test_result <- t.test(sublist1, sublist2)
-      
+      if(test == 't')t_test_result <- t.test(sublist1, sublist2)
+      else t_test_result <- var.test(sublist1,sublist2)
       if (!is.na(t_test_result$p.value)) {
         # Add the current p-value and combination to the data frame
         smallest_p_values <- rbind(smallest_p_values, data.frame(p_value = t_test_result$p.value, i = findEdge(i), j = findEdge(j)))
@@ -558,8 +559,13 @@ findavSD <- function(group){
   # Calculate the overall average SD, if the vector is not empty
   if(length(flat_SDs) > 0) {
     avg_SD <- mean(flat_SDs)
-    print(paste0("Average SD for group: ",group))
-    print(avg_SD)
+    print(paste0("group: ", group))
+    # Find and print the highest and lowest SD
+    max_SD <- max(flat_SDs)
+    min_SD <- min(flat_SDs)
+    print(paste0("Average SD: ", avg_SD))
+    print(paste0("Highest SD: ", max_SD))
+    print(paste0("Lowest SD: ", min_SD))
   } else {
     print("No valid data to calculate the average SD.")
   }
@@ -567,3 +573,40 @@ findavSD <- function(group){
 
 grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd')
 
+subHeatmap <- function(group){
+  library(corrplot)
+  #Goes to each participant, makes a heatmap of the data, and saves it in a folder
+  o <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/ParticMaps/",group)
+  if (!dir.exists(o)) dir.create(o,recursive = TRUE)
+  
+  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Features")
+  features <- paste0(group,"_OD_mean.rds")
+  labeldata <- readRDS(features)[[1]]
+  setwd(o)
+  for(i in 1:length(labeldata)){
+    outname <- paste0(i,"_Heatmap.pdf")
+    pdf(file = outname)
+    data <- labeldata[[i]]
+    # Clip the data to be within the range 0 to 0.6
+    data_clipped <- pmin(pmax(data, 0), 0.6)
+    
+    # Now, create the corrplot with manually set breaks and color limits
+    corrplot(data_clipped, 
+             method = "color",                             # Use color method for heatmap
+             col = colorRampPalette(c("blue", "white", "red"))(200),
+             col.lim = c(0,.6),
+             tl.pos = "lt",                                # Place axis labels on the left and top
+             tl.col = "black",                             # Set axis numbers color to black
+             tl.cex = 0.3,                                 # Adjust the font size of the axis numbers
+             addgrid.col = "white",                        # Set grid lines to white
+             number.cex = 0.1,
+             cl.pos = "b",                                 # Place color legend at the bottom
+             is.corr = FALSE,                              # Force the color scale limits to always be between 0 and 0.6
+    )
+    
+    dev.off()
+             }
+    
+  
+}
+for(g in grouplist) subHeatmap(g)
