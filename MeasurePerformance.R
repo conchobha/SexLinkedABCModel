@@ -611,4 +611,42 @@ subHeatmap <- function(group){
     
   
 }
-for(g in grouplist) subHeatmap(g)
+
+
+difHeatmap <- function(g1, g2,modeldir,outputdir){
+  #Makes a heatmap of the estimated connectivity of both groups compared to each other, and saves it at the given DIR
+  library(corrplot)
+  setwd(modeldir)
+  o <- outputdir
+  #load the data for g1
+  g1name <- paste0("ANDI_OD_",g1,"mean_1e+05_1000.rdata")
+  data <- readRDS(g1name)
+  model <- data$model
+  g1data <- model$UVPM
+
+  #load data for g2
+  g2name <- paste0("ANDI_OD_",g2,"mean_1e+05_1000.rdata")
+  data <- readRDS(g2name)
+  model <- data$model
+  g2data <- model$UVPM
+
+
+  matrix_data <- g1data - g2data 
+  if (!dir.exists(o)) dir.create(o,recursive = TRUE)
+  setwd(o)
+  pdf(file = paste0(g1,"_vs_",g2,"_heatmap.pdf"))
+
+  #Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate. 
+  corrplot(matrix_data,
+           method = "color",                            # Use color method for heatmap
+           col = colorRampPalette(c("blue", "white", "red"))(200), # Color gradient
+           tl.pos = "lt",                               # Place axis labels on the left and top
+           tl.col = "black",                            # Set axis numbers color to black
+           tl.cex = 0.3,                                # Adjust the font size of the axis numbers
+           addgrid.col = "white",                       # Set grid lines to white
+           number.cex = 0.1,
+           cl.pos = "b",                                # Place color legend at the bottom
+           is.corr = FALSE                              # Indicate this is not a correlation matrix
+  )
+  dev.off()
+}
