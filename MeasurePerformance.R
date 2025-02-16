@@ -5,61 +5,160 @@ library(latentnet)
 library(lvm4net)
 library(amen)
 library(pROC)
-library(corrplot)
-Heatmap <- function( metric, group, value = TRUE){
-  modelname=paste0("ADNI_",metric,"_",group,"_mean_1e+05_1000.rdata")
-  #Takes in a Model, and Saves a PDF holding an image of the heat map of the estimated correlation 
-  location <- paste0('/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/',metric,'/Rep-1/')
-  setwd(location)
-  data <- readRDS(modelname)
-  model <-data$model
-  matrix_data <- model$UVPM
-  labels <- seq(1, 84, by=8)
-  o <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/",metric)
+
+Heatmap <- function(g1, g2=NA,
+                    modeldir = '/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1' ,
+                    outputdir= "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/",
+                    order = TRUE){
+  #A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given
+  #If a second group is given, it will give the difference between the two groups 
+  library(corrplot)
+  
+  reorder <- function(matrix_to_reorder) {
+    # Load the required data
+    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    
+    
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+    
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+    
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+    
+    return(reordered_mat)
+  }
+  
+  add_RSN_borders <- function() {
+    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    unique_groups <- unique(final_df[order(final_df$LOBE), ])
+    group <- unique(unique_groups$LOBE)
+    # Manually figure out the rectangles 
+    group_ranges <- list(
+      list(name = "Cingulate", range = c(1, 8)),
+      list(name = "Frontal", range = c(9, 30)),
+      list(name = "Insular", range = c(31, 32)),
+      list(name = "Occipital", range = c(33, 40)),
+      list(name = "Parietal", range = c(41, 50)),
+      list(name = "Subcortical", range = c(51, 64)),
+      list(name = "Temporal", range = c(65, 82))
+    )
+    ymax <- 84
+    ymin <- 1
+    
+    for (group in group_ranges) {
+      range <- group$range
+      flipped_ybottom <- ymax - (range[2] + 0.5 - ymin)
+      flipped_ytop <- ymax - (range[1] - 0.5 - ymin)
+      
+      rect(
+        xleft = range[1] - 0.5,
+        ybottom = flipped_ybottom,
+        xright = range[2] + 0.5,
+        ytop = flipped_ytop,
+        border = "black",
+        lwd = 2)
+      
+      text(
+        x = range[2] + 5,                             # Midpoint of the x range
+        y = flipped_ytop,                    # Slightly below the rectangle
+        labels = group$name,                        # Use the name from the list
+        cex = 0.7,                                  # Adjust text size as needed
+        col = "black",                              # Text color
+        adj = c(0.5, 1)                             # Centered alignment
+      )
+    }
+    
+    
+  }
+  
+  setwd(modeldir)
+  o <- outputdir
+  #load the data for g1
+  g1name <- paste0("ADNI_OD_",g1,"_mean_1e+05_1000.rdata")
+  data <- readRDS(g1name)
+  model <- data$model
+  g1data <- model$UVPM
+  fname <- paste0(g1,"_heatmap.pdf")
+  if(!is.na(g2)){
+  #load data for g2, if we are doing a comparison map
+    g2name <- paste0("ADNI_OD_",g2,"_mean_1e+05_1000.rdata")
+    data <- readRDS(g2name)
+    model <- data$model
+    g2data <- model$UVPM
+    matrix_data <- g1data - g2data
+    fname <- paste0(g1,"_vs_",g2,"_heatmap.pdf")
+  }else matrix_data <- g1data
+
+  if (order) m <- reorder(matrix_data)
+  else m <- matrix_data
+  
   if (!dir.exists(o)) dir.create(o,recursive = TRUE)
   setwd(o)
+  pdf(file = fname )
   
-  pdf(file = paste0(metric,group,'_heatmap.pdf'))
-  # Plot with custom labels
-  if(value){
-  corrplot(matrix_data,
+  #Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate. 
+  corrplot(m,
            method = "color",                            # Use color method for heatmap
            col = colorRampPalette(c("blue", "white", "red"))(200), # Color gradient
            tl.pos = "lt",                               # Place axis labels on the left and top
            tl.col = "black",                            # Set axis numbers color to black
            tl.cex = 0.3,                                # Adjust the font size of the axis numbers
-           addgrid.col = "white",                       # Set grid lines to white
            number.cex = 0.1,
+           addgrid.col = "white",  
            cl.pos = "b",                                # Place color legend at the bottom
            is.corr = FALSE                              # Indicate this is not a correlation matrix
   )
-  }else{
-    corrplot(matrix_data,
-             method = "color",                            # Use color method for heatmap
-             col = c("orange", "cyan"),                   # Use two colors: orange for negative, cyan for positive
-             breaks = c(-Inf, 0, Inf),                    # Define breaks to apply colors
-             tl.pos = "lt",                               # Place axis labels on the left and top
-             tl.col = "black",                            # Set axis numbers color to black
-             tl.cex = 0.3,                                # Adjust the font size of the axis numbers
-             addgrid.col = "white",                       # Set grid lines to white
-             number.cex = 0.1,
-             cl.pos = "b",                                # Place color legend at the bottom
-             is.corr = FALSE                              # Indicate this is not a correlation matrix
-    )
-    
-  }
-  # Add custom stepped labels    
+  if(order) add_RSN_borders()
   dev.off()
 }
-Traceplot <- function(modelname="ADNI_Da_combined_mean_10000_1000.rdata",group,filedir){
+
+subjectHeatmap <- function(group){
+  library(corrplot)
+  #Goes to each participant, makes a heatmap of the data, and saves it in a folder
+  o <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/ParticMapsor/",group)
+  if (!dir.exists(o)) dir.create(o,recursive = TRUE)
+  
+  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Features")
+  features <- paste0(group,"_OD_mean.rds")
+  labeldata <- readRDS(features)[[1]]
+  setwd(o)
+  for(i in 1:length(labeldata)){
+    outname <- paste0(i,"_Heatmap.pdf")
+    pdf(file = outname)
+    data <- labeldata[[i]]
+    # Clip the data to be within the range 0 to 0.6
+    data_clipped <- pmin(pmax(data, 0), 0.6)
+    # Now, create the corrplot with manually set breaks and color limits
+    corrplot(reorder_mat(data_clipped), 
+             method = "color",                             # Use color method for heatmap
+             col = colorRampPalette(c("blue", "white", "red"))(200),
+             col.lim = c(0,.6),
+             tl.pos = "lt",                                # Place axis labels on the left and top
+             tl.col = "black",                             # Set axis numbers color to black
+             tl.cex = 0.3,                                 # Adjust the font size of the axis numbers
+             addgrid.col = "white",                        # Set grid lines to white
+             number.cex = 0.1,
+             cl.pos = "b",                                 # Place color legend at the bottom
+             is.corr = FALSE,                              # Force the color scale limits to always be between 0 and 0.6
+    )
+    dev.off()
+  }
+}
+
+
+
+Traceplot <- function(modelname="ADNI_Da_combined_mean_10000_1000.rdata",group,filedir =  "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1/"){
   setwd(filedir)
   data <- readRDS(modelname)
   model1=data$model
   UVPM1<-model1$UVPM
-  UVC1 <- model1$UVC
+  UVC1 <- model1$UVC[4500:7500,90:100]
   # model1$TAC
   l <- data$sn/10
-  mc1 <- mcmc(data=UVC1[,90:100],start = 1, end = l, thin=1)
+  mc1 <- mcmc(data=UVC1,start = 1, end = nrow(UVC1), thin=1)
   setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/Traceplots")
   pdf(file = paste0(group,'_Traceplot.pdf'))
   traceplot(mc1,ylab = 'Covariance Estimate')
@@ -84,7 +183,8 @@ Correlation <- function (modelname="ADNI_Dr_combined_mean_10000_1000.rdata",mode
 }
 histo <- function(modelname,metric, 
                   modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output" , 
-                  outputloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots" ){# makes a histogram for the specified model
+                  outputloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots" )
+  {# makes a histogram for the specified model
   setwd(modelloc)
   data <- readRDS(modelname)
   model1=data$model
@@ -248,7 +348,7 @@ CI <- function(group = 'f', metric = 'OD', modeldir = "/N/u/conlcorn/BigRed200/S
   # Load CN data
   df <- readRDS(cn_name)
   model1 <- df$model
-  UVC1 <- model1$UVC[4500:6500,]
+  UVC1 <- model1$UVC
   hi.g1 <- t(apply(UVC1, 2, credible_interval))
   rhi.g1 <- hi.g1[index, ]
   UVPM <- model1$UVPM
@@ -267,7 +367,7 @@ CI <- function(group = 'f', metric = 'OD', modeldir = "/N/u/conlcorn/BigRed200/S
   # Load MCI data
   df <- readRDS(mci_name)
   model1 <- df$model
-  UVC1 <- model1$UVC[4500:6500,]
+  UVC1 <- model1$UVC[4500:7500,]
   hi.g5 <- t(apply(UVC1, 2, credible_interval))
   rhi.g5 <- hi.g5[index, ]
   UVPM <- model1$UVPM
@@ -573,80 +673,16 @@ findavSD <- function(group){
   }
 }
 
+
+
+
+
 grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd')
 
-subHeatmap <- function(group){
-  library(corrplot)
-  #Goes to each participant, makes a heatmap of the data, and saves it in a folder
-  o <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/ParticMaps/",group)
-  if (!dir.exists(o)) dir.create(o,recursive = TRUE)
-  
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Features")
-  features <- paste0(group,"_OD_mean.rds")
-  labeldata <- readRDS(features)[[1]]
-  setwd(o)
-  for(i in 1:length(labeldata)){
-    outname <- paste0(i,"_Heatmap.pdf")
-    pdf(file = outname)
-    data <- labeldata[[i]]
-    # Clip the data to be within the range 0 to 0.6
-    data_clipped <- pmin(pmax(data, 0), 0.6)
-    
-    # Now, create the corrplot with manually set breaks and color limits
-    corrplot(data_clipped, 
-             method = "color",                             # Use color method for heatmap
-             col = colorRampPalette(c("blue", "white", "red"))(200),
-             col.lim = c(0,.6),
-             tl.pos = "lt",                                # Place axis labels on the left and top
-             tl.col = "black",                             # Set axis numbers color to black
-             tl.cex = 0.3,                                 # Adjust the font size of the axis numbers
-             addgrid.col = "white",                        # Set grid lines to white
-             number.cex = 0.1,
-             cl.pos = "b",                                 # Place color legend at the bottom
-             is.corr = FALSE,                              # Force the color scale limits to always be between 0 and 0.6
-    )
-    
-    dev.off()
-             }
-    
-  
-}
-
-
-difHeatmap <- function(g1, g2,modeldir,outputdir){
-  #Makes a heatmap of the estimated connectivity of both groups compared to each other, and saves it at the given DIR
-  library(corrplot)
-  setwd(modeldir)
-  o <- outputdir
-  #load the data for g1
-  g1name <- paste0("ANDI_OD_",g1,"mean_1e+05_1000.rdata")
-  data <- readRDS(g1name)
-  model <- data$model
-  g1data <- model$UVPM
-
-  #load data for g2
-  g2name <- paste0("ANDI_OD_",g2,"mean_1e+05_1000.rdata")
-  data <- readRDS(g2name)
-  model <- data$model
-  g2data <- model$UVPM
-
-
-  matrix_data <- g1data - g2data 
-  if (!dir.exists(o)) dir.create(o,recursive = TRUE)
-  setwd(o)
-  pdf(file = paste0(g1,"_vs_",g2,"_heatmap.pdf"))
-
-  #Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate. 
-  corrplot(matrix_data,
-           method = "color",                            # Use color method for heatmap
-           col = colorRampPalette(c("blue", "white", "red"))(200), # Color gradient
-           tl.pos = "lt",                               # Place axis labels on the left and top
-           tl.col = "black",                            # Set axis numbers color to black
-           tl.cex = 0.3,                                # Adjust the font size of the axis numbers
-           addgrid.col = "white",                       # Set grid lines to white
-           number.cex = 0.1,
-           cl.pos = "b",                                # Place color legend at the bottom
-           is.corr = FALSE                              # Indicate this is not a correlation matrix
-  )
-  dev.off()
+for (g1_idx in 1:(length(grouplist) - 1)) {
+  for (g2_idx in (g1_idx + 1):length(grouplist)) {
+    g1 <- grouplist[g1_idx]
+    g2 <- grouplist[g2_idx]
+    Heatmap(g1 = g1, g2 = g2, outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/GroupCompOrdered")
+  }
 }

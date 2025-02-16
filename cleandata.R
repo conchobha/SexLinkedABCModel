@@ -150,3 +150,30 @@ pullYs<-function(group='fcn',
 
 
 
+remakeAtlas <- function()
+{
+  library(dplyr)
+  library(stringr)
+  # Remakes the brain atlas file to fix formating 
+  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/data/")
+  #pull the two atlases we need to merge 
+  
+  rightindex <- read_excel("iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx", sheet = 2)
+  right <- rightindex[10:nrow(rightindex),]
+  regions <- read_xlsx("Table_84ROI_Yeo7_relabeled_withlobes.xlsx")
+  
+  #Clean the names 
+  
+  ROI <- right %>% mutate(ROI = str_replace(ICV, "^ctx-", ""))  # Removes "left_" or "right_" from the start of the string
+  
+  combined_df <- ROI %>%
+    mutate(row_number = row_number()) %>%  # Add row number to 'right'
+    left_join(regions, by = "ROI")  # Join on cleaned ICV names
+  
+  final_df <- combined_df %>%
+    dplyr::select(ROI, row_number, LOBE)
+  # save the df as a file to use later 
+  save(final_df, file = "finalAtlas.rds")
+  
+}
+
