@@ -686,3 +686,95 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
     Heatmap(g1 = g1, g2 = g2, outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/GroupCompOrdered")
   }
 }
+
+
+CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1' ){
+  # function to perform CI_analysis of lobes
+  # We need to parse the connections in each region
+  #   In each one, see if the difference between the two given groups is statistically signifigant by analyzing their CI's
+  #   If they are, mark them down 
+#Define the CI function 
+
+  CI <- function(x) {
+      quantile(x, probs = c(0.025, 0.975))
+  }
+  #Defines both the lobe names, and where their connections are 
+  lobe_info <- list(
+      list(name = "Cingulate", range = c(1, 8)),
+      list(name = "Frontal", range = c(9, 30)),
+      list(name = "Insular", range = c(31, 32)),
+      list(name = "Occipital", range = c(33, 40)),
+      list(name = "Parietal", range = c(41, 50)),
+      list(name = "Subcortical", range = c(51, 64)),
+      list(name = "Temporal", range = c(65, 82))
+    )
+
+    # load the first model
+    setwd(modelloc)
+    model1name <- paste0("ADNI_OD_",g1,"_mean_1e+05_1000.rdata")
+    model1 <- readRDS(model1name)
+    model1 <- model1$model
+    UVC1 <- model1$UVC
+    # Generate the CI's for g1
+    hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+                                                                                 # How to find which one is the unique region????
+    #do the same for g2
+    model2name <- paste0("ADNI_OD_",g2,"_mean_1e+05_1000.rdata")
+    model2 <- readRDS(model2name)
+    model2 <- model2$model
+    UVC2 <- model2$UVC
+    # Generate the CI's for g2
+    hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+
+    # Look for regions in each lobe region in where the CI's do not overlap
+    #   If they do not, add them to a list of regions that are different
+    #   If they do, add them to a list of regions that are the same
+
+    # Initialize lists to store results
+    important_regions <- list(
+      list(name = "Cingulate", regions = list()),
+      list(name = "Frontal", regions = list()),
+      list(name = "Insular", regions = list()),
+      list(name = "Occipital", regions = list()),
+      list(name = "Parietal", regions = list()),
+      list(name = "Subcortical", regions = list()),
+      list(name = "Temporal", regions = list())
+    )
+
+
+
+
+    # Function to map the index of the quantile matrix back to the original matrix indices
+  get_original_indices <- function(index, n = 84) {
+    row <- ceiling((2 * n + 1 - sqrt((2 * n + 1)^2 - 8 * index)) / 2)
+    col <- index - (row - 1) * (2 * n - row) / 2 + row
+    return(c(row, col))
+  } # usage
+    # Given a range, find the indices of the connections that fall within that range
+
+
+    # Loop through each lobe
+    for(lobe in lobe_info) {
+      range <- lobe$range
+      # Extract the CI's for the current lobe
+      # Need to figure out how the CI functions works to get the right CI's
+      # first, find the indices of the connections that fall within the range
+      
+
+      lobe_ci_g1 <- 
+      lobe_ci_g2 <- 
+      # Check for non-overlapping CI's
+
+      # Check for non-overlapping CI's
+      for(i in 1:nrow(lobe_ci_g1)) {
+          if(lobe_ci_g1[i, 1] > lobe_ci_g2[i, 2] || lobe_ci_g2[i, 1] > lobe_ci_g1[i, 2]) {
+              # If CI's do not overlap, add the region to the list of important regions
+              important_regions[[which(sapply(important_regions, function(x) x$name == lobe$name))]]$regions <- c(important_regions[[which(sapply(important_regions, function(x) x$name == lobe$name))]]$regions, i)
+        }
+      }
+      
+    }
+    # Print the important regions for each lobe
+
+
+}
