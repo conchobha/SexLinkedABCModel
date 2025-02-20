@@ -740,41 +740,66 @@ CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed
       list(name = "Subcortical", regions = list()),
       list(name = "Temporal", regions = list())
     )
+  # It wouldn't be wise to reconstruct the matrix, it'll be easier to parse manually 
+  # We know the order of the 84x83/2 goes through each row of the original matrix, until it can't anymore, then it goes to the next column
+  # This matrix stores where we are in the original matrix, and which index in the list responds to that location
 
+  # Create an 84x84 matrix filled with zeros
+loc_matrix <- matrix(0, nrow = 84, ncol = 84)
 
+# Start filling the upper triangle downwards, column by column
+index <- 1
+for (j in 2:84) {  # Start from the second column
+  for (i in 1:(j-1)) {  # Only fill below the diagonal
+    loc_matrix[i, j] <- index
+    index <- index + 1
+  }
+}
 
+# Now, we can use this matrix to parse our data 
 
-    # Function to map the index of the quantile matrix back to the original matrix indices
-  get_original_indices <- function(index, n = 84) {
-    row <- ceiling((2 * n + 1 - sqrt((2 * n + 1)^2 - 8 * index)) / 2)
-    col <- index - (row - 1) * (2 * n - row) / 2 + row
-    return(c(row, col))
-  } # usage
-    # Given a range, find the indices of the connections that fall within that range
+for(lobe in lobe_info){
+  # Get the range of values 
+  range <- lobe$range
+  # Get the name of the lobe
+  name <- lobe$name
 
+  # create empty list
+  regions <- list()
 
-    # Loop through each lobe
-    for(lobe in lobe_info) {
-      range <- lobe$range
-      # Extract the CI's for the current lobe
-      # Need to figure out how the CI functions works to get the right CI's
-      # first, find the indices of the connections that fall within the range
-      
+  for(i in range[1]:range[2]){ # Parse for each column
+    for(j in range[1]:range[2]){ # Parse for each Row
+      # check if we are in an out of range spot using the loc_matrix
+      n <- loc_matrix[i,j]
+      if(n == 0) next
+      # Get the CI's for each group using n 
+      tmp1 <- hi.g1[n,]
+      tmp2 <- hi.g2[n,]
 
-      lobe_ci_g1 <- 
-      lobe_ci_g2 <- 
-      # Check for non-overlapping CI's
-
-      # Check for non-overlapping CI's
-      for(i in 1:nrow(lobe_ci_g1)) {
-          if(lobe_ci_g1[i, 1] > lobe_ci_g2[i, 2] || lobe_ci_g2[i, 1] > lobe_ci_g1[i, 2]) {
-              # If CI's do not overlap, add the region to the list of important regions
-              important_regions[[which(sapply(important_regions, function(x) x$name == lobe$name))]]$regions <- c(important_regions[[which(sapply(important_regions, function(x) x$name == lobe$name))]]$regions, i)
-        }
+      # check if they overlap
+      if(tmp1[1] > tmp2[2] | tmp2[1] > tmp1[2]){
+        # If they don't, add them to the list of important regions
+        regions <- append(regions, list(c(i,j)))
       }
-      
-    }
-    # Print the important regions for each lobe
 
+    }
+  }
+  # Add the regions to the important regions list
+  important_regions[[which(sapply(important_regions, function(x) x$name) == name)]]$regions <- regions
+
+}
+
+# Print the results
+for(lobe in important_regions){
+  cat("Lobe:", lobe$name, "\n")
+  cat("Regions:\n")
+  for(region in lobe$regions){
+    cat(" -", region, "\n")
+  }
+  cat("\n")
+
+    
+
+  
 
 }
