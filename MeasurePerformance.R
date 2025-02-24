@@ -677,129 +677,161 @@ findavSD <- function(group){
 
 
 
+
+
+
+CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1', type = "a", outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots" )
+{
+  #' @param type defines the type of analysis. Can be l,m,a
+  #' This measures if we see where g1 is significantly less than g2, more than, or both 
+  # function to perform CI_analysis of lobes
+  # We need to parse the connections in each region
+  #   In each one, see if the difference between the two given groups is statistically signifigant by analyzing their CI's
+  #   If they are, mark them down 
+  #Define the CI function 
+  o <- paste0(outputdir,"/",type)
+  CI <- function(x) {
+    quantile(x, probs = c(0.025, 0.975))
+  }
+  #Defines both the lobe names, and where their connections are 
+  lobe_info <- list(
+    list(name = "Cingulate", range = c(1, 8)),
+    list(name = "Frontal", range = c(9, 30)),
+    list(name = "Insular", range = c(31, 32)),
+    list(name = "Occipital", range = c(33, 40)),
+    list(name = "Parietal", range = c(41, 50)),
+    list(name = "Subcortical", range = c(51, 64)),
+    list(name = "Temporal", range = c(65, 82))
+  )
+  
+  # load the first model
+  setwd(modelloc)
+  model1name <- paste0("ADNI_OD_",g1,"_mean_1e+05_1000.rdata")
+  model1 <- readRDS(model1name)
+  model1 <- model1$model
+  UVC1 <- model1$UVC
+  # Generate the CI's for g1
+  hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+  # How to find which one is the unique region????
+  #do the same for g2
+  model2name <- paste0("ADNI_OD_",g2,"_mean_1e+05_1000.rdata")
+  model2 <- readRDS(model2name)
+  model2 <- model2$model
+  UVC2 <- model2$UVC
+  # Generate the CI's for g2
+  hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+  
+  # Look for regions in each lobe region in where the CI's do not overlap
+  #   If they do not, add them to a list of regions that are different
+  #   If they do, add them to a list of regions that are the same
+  
+  # Initialize lists to store results
+  important_regions <- list(
+    list(name = "Cingulate", regions = list()),
+    list(name = "Frontal", regions = list()),
+    list(name = "Insular", regions = list()),
+    list(name = "Occipital", regions = list()),
+    list(name = "Parietal", regions = list()),
+    list(name = "Subcortical", regions = list()),
+    list(name = "Temporal", regions = list())
+  )
+  # It wouldn't be wise to reconstruct the matrix, it'll be easier to parse manually 
+  # We know the order of the 84x83/2 goes through each row of the original matrix, until it can't anymore, then it goes to the next column
+  # This matrix stores where we are in the original matrix, and which index in the list responds to that location
+  
+  # Create an 84x84 matrix filled with zeros
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+  index <- 1
+  for (j in 2:84) {  # Start from the second column
+    for (i in 1:(j-1)) {  # Only fill below the diagonal
+      loc_matrix[i, j] <- index
+      index <- index + 1
+    }
+  }
+  
+  # Now, we can use this matrix to parse our data 
+  
+  for(lobe in lobe_info){
+    # Get the range of values 
+    range <- lobe$range
+    # Get the name of the lobe
+    name <- lobe$name
+    
+    # create empty list
+    regions <- list()
+    
+    for(i in range[1]:range[2]){ # Parse for each column
+      for(j in range[1]:range[2]){ # Parse for each Row
+        # check if we are in an out of range spot using the loc_matrix
+        n <- loc_matrix[i,j]
+        if(n == 0) next
+        # Get the CI's for each group using n 
+        tmp1 <- hi.g1[n,]
+        tmp2 <- hi.g2[n,]
+        
+        # check if they overlap
+        if(!max(tmp1[1],tmp2[1])<= min(tmp1[2],tmp2[2])){
+          if(type == 'l' && tmp1[2] <= tmp2[1]) regions <- append(regions, list(c(i, j)))
+          else if (type == 'g' && tmp1[1] >= tmp2[2]) regions <- append(regions, list(c(i, j)))
+          else if(type == 'a') regions <- append(regions, list(c(i, j)))
+        } 
+      }
+    }
+    # Add the regions to the important regions list
+    important_regions[[which(sapply(important_regions, function(x) x$name) == name)]]$regions <- regions
+    
+  }
+  
+  
+  df_connections <- data.frame(
+    Name = sapply(important_regions, function(x) x$name),
+    TotalConnections = sapply(important_regions, function(x) length(x$regions))
+  )
+  
+  max_val <- max(df_connections$TotalConnections) + 2  # Add buffer for visualization
+  min_val <- 0
+  
+  #make a radar chart of the data using the fmsb library
+  library(fmsb)
+  
+  radar_data <- as.data.frame(rbind(
+    rep(max_val, nrow(df_connections)),  # Max values
+    rep(min_val, nrow(df_connections)),  # Min values
+    df_connections$TotalConnections      # Actual values
+  ))
+  
+  colnames(radar_data) <- df_connections$Name  # Set column names
+  if(type == 'a') chart_title <- paste0("Signifigant regions for ",g1," and ",g2)
+  else if(type == 'l') chart_title <- paste0(g1," is less than ",g2)
+  else if(type == 'g') chart_title <- paste0(g1," is greater than ",g2)
+  # Create Spider Plot
+  fname <- paste0(g1,"_",g2,"_",type,"_spiderplot.pdf")
+  if (!dir.exists(o)) dir.create(o,recursive = TRUE)
+  setwd(o)
+  pdf(file = fname )
+  
+  radarchart(radar_data,
+             axistype = 2,
+             pcol = "blue", pfcol = "lightblue", plwd = 3,
+             title = chart_title, vlcex = 1,
+             cglcol = "gray", cglty = 1, axislabcol = "black", 
+             caxislabels = seq(0, max_val, by = 10))
+  
+  dev.off()
+  
+}
+
+
 grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd')
 
 for (g1_idx in 1:(length(grouplist) - 1)) {
   for (g2_idx in (g1_idx + 1):length(grouplist)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
-    Heatmap(g1 = g1, g2 = g2, outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/GroupCompOrdered")
-  }
-}
-
-
-CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1' ){
-  # function to perform CI_analysis of lobes
-  # We need to parse the connections in each region
-  #   In each one, see if the difference between the two given groups is statistically signifigant by analyzing their CI's
-  #   If they are, mark them down 
-#Define the CI function 
-
-  CI <- function(x) {
-      quantile(x, probs = c(0.025, 0.975))
-  }
-  #Defines both the lobe names, and where their connections are 
-  lobe_info <- list(
-      list(name = "Cingulate", range = c(1, 8)),
-      list(name = "Frontal", range = c(9, 30)),
-      list(name = "Insular", range = c(31, 32)),
-      list(name = "Occipital", range = c(33, 40)),
-      list(name = "Parietal", range = c(41, 50)),
-      list(name = "Subcortical", range = c(51, 64)),
-      list(name = "Temporal", range = c(65, 82))
-    )
-
-    # load the first model
-    setwd(modelloc)
-    model1name <- paste0("ADNI_OD_",g1,"_mean_1e+05_1000.rdata")
-    model1 <- readRDS(model1name)
-    model1 <- model1$model
-    UVC1 <- model1$UVC
-    # Generate the CI's for g1
-    hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
-                                                                                 # How to find which one is the unique region????
-    #do the same for g2
-    model2name <- paste0("ADNI_OD_",g2,"_mean_1e+05_1000.rdata")
-    model2 <- readRDS(model2name)
-    model2 <- model2$model
-    UVC2 <- model2$UVC
-    # Generate the CI's for g2
-    hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
-
-    # Look for regions in each lobe region in where the CI's do not overlap
-    #   If they do not, add them to a list of regions that are different
-    #   If they do, add them to a list of regions that are the same
-
-    # Initialize lists to store results
-    important_regions <- list(
-      list(name = "Cingulate", regions = list()),
-      list(name = "Frontal", regions = list()),
-      list(name = "Insular", regions = list()),
-      list(name = "Occipital", regions = list()),
-      list(name = "Parietal", regions = list()),
-      list(name = "Subcortical", regions = list()),
-      list(name = "Temporal", regions = list())
-    )
-  # It wouldn't be wise to reconstruct the matrix, it'll be easier to parse manually 
-  # We know the order of the 84x83/2 goes through each row of the original matrix, until it can't anymore, then it goes to the next column
-  # This matrix stores where we are in the original matrix, and which index in the list responds to that location
-
-  # Create an 84x84 matrix filled with zeros
-loc_matrix <- matrix(0, nrow = 84, ncol = 84)
-
-# Start filling the upper triangle downwards, column by column
-index <- 1
-for (j in 2:84) {  # Start from the second column
-  for (i in 1:(j-1)) {  # Only fill below the diagonal
-    loc_matrix[i, j] <- index
-    index <- index + 1
-  }
-}
-
-# Now, we can use this matrix to parse our data 
-
-for(lobe in lobe_info){
-  # Get the range of values 
-  range <- lobe$range
-  # Get the name of the lobe
-  name <- lobe$name
-
-  # create empty list
-  regions <- list()
-
-  for(i in range[1]:range[2]){ # Parse for each column
-    for(j in range[1]:range[2]){ # Parse for each Row
-      # check if we are in an out of range spot using the loc_matrix
-      n <- loc_matrix[i,j]
-      if(n == 0) next
-      # Get the CI's for each group using n 
-      tmp1 <- hi.g1[n,]
-      tmp2 <- hi.g2[n,]
-
-      # check if they overlap
-      if(tmp1[1] > tmp2[2] | tmp2[1] > tmp1[2]){
-        # If they don't, add them to the list of important regions
-        regions <- append(regions, list(c(i,j)))
-      }
-
-    }
-  }
-  # Add the regions to the important regions list
-  important_regions[[which(sapply(important_regions, function(x) x$name) == name)]]$regions <- regions
-
-}
-
-# Print the results
-for(lobe in important_regions){
-  cat("Lobe:", lobe$name, "\n")
-  cat("Regions:\n")
-  for(region in lobe$regions){
-    cat(" -", region, "\n")
-  }
-  cat("\n")
-
+    CI_analysis(g1 = g1, g2 = g2,type = 'g')
+    CI_analysis(g1 = g1, g2 = g2,type = 'l')
     
-
-  
-
+    }
 }
