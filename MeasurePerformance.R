@@ -101,15 +101,12 @@ Heatmap <- function(g1, g2=NA,
   
   #Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate. 
   corrplot(m,
-           method = "color",                            # Use color method for heatmap
-           col = colorRampPalette(c("blue", "white", "red"))(200), # Color gradient
-           tl.pos = "lt",                               # Place axis labels on the left and top
-           tl.col = "black",                            # Set axis numbers color to black
-           tl.cex = 0.3,                                # Adjust the font size of the axis numbers
-           number.cex = 0.1,
+           method = "color",                            
+           col = colorRampPalette(c("blue", "white", "red"))(200), 
+           tl.pos = "n",   # Remove axis labels (numbers)
            addgrid.col = "white",  
-           cl.pos = "b",                                # Place color legend at the bottom
-           is.corr = FALSE                              # Indicate this is not a correlation matrix
+           cl.pos = "b",                                
+           is.corr = FALSE                              
   )
   if(order) add_RSN_borders()
   dev.off()
@@ -790,7 +787,7 @@ CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed
     TotalConnections = sapply(important_regions, function(x) length(x$regions))
   )
   
-  max_val <- max(df_connections$TotalConnections) + 2  # Add buffer for visualization
+  max_val <- max(df_connections$TotalConnections)
   min_val <- 0
   
   #make a radar chart of the data using the fmsb library
@@ -811,27 +808,26 @@ CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed
   if (!dir.exists(o)) dir.create(o,recursive = TRUE)
   setwd(o)
   pdf(file = fname )
-  
+  step <- round(max_val/4,0)
   radarchart(radar_data,
-             axistype = 2,
+             axistype = 1,
              pcol = "blue", pfcol = "lightblue", plwd = 3,
              title = chart_title, vlcex = 1,
              cglcol = "gray", cglty = 1, axislabcol = "black", 
-             caxislabels = seq(0, max_val, by = 10))
+             caxislabels = seq(0, max_val, by = step))
   
   dev.off()
   
 }
 
-
+CI_analysis()
 grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd')
 
 for (g1_idx in 1:(length(grouplist) - 1)) {
   for (g2_idx in (g1_idx + 1):length(grouplist)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
-    CI_analysis(g1 = g1, g2 = g2,type = 'g')
-    CI_analysis(g1 = g1, g2 = g2,type = 'l')
+    Heatmap(g1,g2)
     
     }
 }
