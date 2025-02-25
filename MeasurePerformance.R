@@ -677,15 +677,19 @@ findavSD <- function(group){
 
 
 
-CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', modelloc = '/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1', type = "a", outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots" )
+CI_analysis <- function(g1 = 'fcn',g2 = 'fmci', 
+                        modelloc = '/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1', 
+                        type = "c", 
+                        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots")
 {
-  #' @param type defines the type of analysis. Can be l,m,a
+  #' @param outputdir defines the output directory for the plots
+  #' @param modelloc defines the location of the models
+  #' @param g1 defines the first group
+  #' @param g2 defines the second group
+  #' @param type defines the type of analysis. Can be l,m,a,c
   #' This measures if we see where g1 is significantly less than g2, more than, or both 
-  # function to perform CI_analysis of lobes
-  # We need to parse the connections in each region
-  #   In each one, see if the difference between the two given groups is statistically signifigant by analyzing their CI's
-  #   If they are, mark them down 
-  #Define the CI function 
+  #' c denotes a combined plot
+
   o <- paste0(outputdir,"/",type)
   CI <- function(x) {
     quantile(x, probs = c(0.025, 0.975))
