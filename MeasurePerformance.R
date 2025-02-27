@@ -720,7 +720,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 
   # load the first model
   setwd(modelloc)
-  model1name <- paste0("ADNI_OD_", g1, "_mean_1e+05_1000.rdata")
+  model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
   model1 <- readRDS(model1name)
   model1 <- model1$model
   UVC1 <- model1$UVC
@@ -728,7 +728,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
   # How to find which one is the unique region????
   # do the same for g2
-  model2name <- paste0("ADNI_OD_", g2, "_mean_1e+05_1000.rdata")
+  model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
   model2 <- readRDS(model2name)
   model2 <- model2$model
   UVC2 <- model2$UVC
@@ -838,7 +838,27 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 
       dev.off()
     }
-  } else { # if we are making a combined plot
+  } else {
+    Greater_Important <- list(
+      list(name = "Cingulate", regions = list()),
+      list(name = "Frontal", regions = list()),
+      list(name = "Insular", regions = list()),
+      list(name = "Occipital", regions = list()),
+      list(name = "Parietal", regions = list()),
+      list(name = "Subcortical", regions = list()),
+      list(name = "Temporal", regions = list()))
+      
+    Lower_Important <- list(
+        list(name = "Cingulate", regions = list()),
+        list(name = "Frontal", regions = list()),
+        list(name = "Insular", regions = list()),
+        list(name = "Occipital", regions = list()),
+        list(name = "Parietal", regions = list()),
+        list(name = "Subcortical", regions = list()),
+        list(name = "Temporal", regions = list()))
+    
+    
+    # if we are making a combined plot
         for (lobe in lobe_info) {
       # Get the range of values
       range <- lobe$range
@@ -869,6 +889,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
           }
         }
       }
+      
       # Add the regions to the important regions list
       Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
       Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions
@@ -894,24 +915,38 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
         rep(min_val, nrow(Greater_DF)), # Min values
         Greater_DF$TotalConnections,
         Lower_DF$TotalConnections # Actual values
-      )
+      ))
 
-      colnames(radar_data) <- Greater_Important$Name # Set column names
+      colnames(radar_data) <- Greater_DF$Name # Set column names
       chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
       # Create Spider Plot
       fname <- paste0(g1, "_", g2,"_spiderplot.pdf")
       if (!dir.exists(o)) dir.create(o, recursive = TRUE)
       setwd(o)
-      pdf(file = fname)
-      step <- round(max_val / 4, 0)
-
+      pdf(file = fname,width = 9)
+      step <- max_val/4
+      
+      areas <- c(rgb(1, 0, 0, 0.25),
+                 rgb(0, 1, 0, 0.25))
+      print("Making Chart")
       radarchart(radar_data,
         axistype = 1,
-        pcol = "blue", pfcol = "lightblue", plwd = 3,
-        title = chart_title, vlcex = 1,
-        cglcol = "gray", cglty = 1, axislabcol = "black",
+        pcol = 2:3,
+        plwd = 3,
+        title = chart_title, 
+        vlcex = 2,
+        cglcol = "gray", 
+        cglty = 2, 
+        axislabcol = "black",
         caxislabels = seq(0, max_val, by = step)
       )
+      
+      legend("topright",
+             legend = c("Larger","Smaller"),
+             bty = "n", pch = 20, col = areas,
+             text.col = "grey25", pt.cex = 2)
+      
+      
       dev.off()
     }
   

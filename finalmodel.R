@@ -12,7 +12,7 @@ args = commandArgs(trailingOnly = TRUE)
 #We are going to be passing the group and replication, group
 group <- grouplist[as.numeric(args[1])] # 6 groups
 dm <- 'OD'
-rep <- 1
+rep <- 42
 # Pull Which dim we are using 
 #for OD
 #dm 1 for FCN, 2 for others 
