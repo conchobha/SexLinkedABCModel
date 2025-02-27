@@ -889,21 +889,12 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
       # make a radar chart of the data using the fmsb library
       library(fmsb)
 
-      Greater_radar <- as.data.frame(rbind(
+      radar_data <- as.data.frame(rbind(
         rep(max_val, nrow(Greater_DF)), # Max values
         rep(min_val, nrow(Greater_DF)), # Min values
-        Greater_DF$TotalConnections # Actual values
-      ))
-
-      Lower_radar <- as.data.frame(rbind(
-        rep(max_val, nrow(Lower_DF)), # Max values
-        rep(min_val, nrow(Lower_DF)), # Min values
+        Greater_DF$TotalConnections,
         Lower_DF$TotalConnections # Actual values
-      ))
-
-      #combined the two dataframes inorder to make both radar plots 
-      radar_data <- cbind(Greater_radar, Lower_radar)
-
+      )
 
       colnames(radar_data) <- Greater_Important$Name # Set column names
       chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
