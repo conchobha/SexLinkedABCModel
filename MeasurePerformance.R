@@ -965,3 +965,5 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
     Heatmap(g1, g2)
   }
 }
+
+#Need to write function to create an average for either estimated connectivity, or any other metric 
