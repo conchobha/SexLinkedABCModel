@@ -894,7 +894,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
         rep(min_val, nrow(Greater_DF)), # Min values
         Greater_DF$TotalConnections,
         Lower_DF$TotalConnections # Actual values
-      )
+      ))
 
       colnames(radar_data) <- Greater_Important$Name # Set column names
       chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
@@ -928,5 +928,58 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
     Heatmap(g1, g2)
+  }
+}
+
+# Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
+
+returnAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = 'fcn')
+{
+  # Load the files
+  setwd(location)
+  # Get a list of all the folders in the directory
+  folders <- list.dirs(location, full.names = FALSE, recursive = FALSE)
+  # Initialize a list to store the data
+  data_list <- list()
+  # Loop through each folder
+  for(folder in folders)
+  {
+    # Get the file name
+    filename <- paste0("ADNI_OD_", group, "_mean_2e+05_1000.rdata")
+    # Check if the file exists in the folder
+    if(file.exists(paste0(folder, "/", filename)))
+    {
+      # Load the file
+      data <- readRDS(paste0(folder, "/", filename))
+      # Extract the model
+      model <- data$model
+      # Extract the UVC or UVPM
+      if(est == "UVC")
+      {
+        data_list[[folder]] <- model$UVC
+      }
+      else if(est == "UVPM")
+      {
+        data_list[[folder]] <- model$UVPM
+      }
+    }
+  }
+
+  #make the average matrix, and save it as a file in location
+  if(length(data_list) > 0)
+  {
+    # Get the dimensions of the matrix
+    dim1 <- dim(data_list[[1]])
+    # Initialize a matrix to store the average
+    average_matrix <- matrix(0, nrow = dim1[1], ncol = dim1[2])
+    # Loop through each matrix and add it to the average
+    for(matrix in data_list)
+    {
+      average_matrix <- average_matrix + matrix
+    }
+    # Divide by the number of matrices to get the average
+    average_matrix <- average_matrix / length(data_list)
+    # Save the average matrix as an RDS file
+    saveRDS(average_matrix, paste0(location, "Average_", group, "_", est, ".rds"))
   }
 }
