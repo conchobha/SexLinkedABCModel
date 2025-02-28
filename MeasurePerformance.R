@@ -692,9 +692,9 @@ findavSD <- function(group) {
 
 
 CI_analysis <- function(g1 = "fcn", g2 = "fmci",
-                        modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1",
+                        modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                         type = "c",
-                        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots") {
+                        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots", av = TRUE) {
   #' @param outputdir defines the output directory for the plots
   #' @param modelloc defines the location of the models
   #' @param g1 defines the first group
@@ -717,24 +717,32 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
     list(name = "Subcortical", range = c(51, 64)),
     list(name = "Temporal", range = c(65, 82))
   )
-
-  # load the first model
+  if(av){ # if we are using average data 
+    setwd(modelloc)
+    model1name <- paste0("Average_", g1, "_UVC.rds")
+    model2name <- paste0("Average_", g2, "_UVC.rds")
+    UVC1 <- readRDS(model1name)
+    UVC2 <- readRDS(model2name)
+  }else{
+ 
   setwd(modelloc)
   model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
   model1 <- readRDS(model1name)
   model1 <- model1$model
-  UVC1 <- model1$UVC
-  # Generate the CI's for g1
-  hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
-  # How to find which one is the unique region????
-  # do the same for g2
   model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
   model2 <- readRDS(model2name)
   model2 <- model2$model
   UVC2 <- model2$UVC
+  UVC1 <- model1$UVC
+  }
+  # Generate the CI's for g1
+  hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+  # How to find which one is the unique region????
+  # do the same for g2
+  
   # Generate the CI's for g2
   hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
-
+  
   # Look for regions in each lobe region in where the CI's do not overlap
   #   If they do not, add them to a list of regions that are different
   #   If they do, add them to a list of regions that are the same
