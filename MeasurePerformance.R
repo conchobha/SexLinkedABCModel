@@ -6,8 +6,8 @@ library(lvm4net)
 library(amen)
 library(pROC)
 
-Heatmap <- function(g1, g2 = NA,
-                    modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1",
+Heatmap <- function(g1, g2 = NA, av = TRUE,
+                    modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                     outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/",
                     order = TRUE) {
   # A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given
@@ -75,21 +75,35 @@ Heatmap <- function(g1, g2 = NA,
 
   setwd(modeldir)
   o <- outputdir
+  if (av){
+    # load the data for g1
+    g1name <- paste0("Average_", g1, "_UVPM.rds")
+    g1data <- readRDS(g1name)
+  }else{
   # load the data for g1
   g1name <- paste0("ADNI_OD_", g1, "_mean_1e+05_1000.rdata")
   data <- readRDS(g1name)
   model <- data$model
   g1data <- model$UVPM
+  }
   fname <- paste0(g1, "_heatmap.pdf")
   if (!is.na(g2)) {
     # load data for g2, if we are doing a comparison map
+
+
+    if(av){
+      g2name <- paste0("Average_", g2, "_UVPM.rds")
+      g2data <- readRDS(g2name)
+      matrix_data <- g1data - g2data
+    }else{
     g2name <- paste0("ADNI_OD_", g2, "_mean_1e+05_1000.rdata")
     data <- readRDS(g2name)
     model <- data$model
     g2data <- model$UVPM
     matrix_data <- g1data - g2data
     fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
-  } else {
+    }
+  }else {
     matrix_data <- g1data
   }
 
@@ -924,7 +938,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
         Greater_DF$TotalConnections,
         Lower_DF$TotalConnections # Actual values
       ))
-      ))
+      
 
       colnames(radar_data) <- Greater_DF$Name # Set column names
       chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
