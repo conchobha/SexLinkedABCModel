@@ -924,7 +924,6 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
         Greater_DF$TotalConnections,
         Lower_DF$TotalConnections # Actual values
       ))
-      ))
 
       colnames(radar_data) <- Greater_DF$Name # Set column names
       chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
@@ -971,7 +970,7 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
   for (g2_idx in (g1_idx + 1):length(grouplist)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
-    Heatmap(g1, g2)
+    CI_analysis(g1 = g1,g2 = g2)
   }
 }
 
@@ -1027,3 +1026,8 @@ returnAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/o
     saveRDS(average_matrix, paste0(location, "Average_", group, "_", est, ".rds"))
   }
 }
+
+CI_analysis(av = TRUE)
+
+
+for(g in grouplist) returnAverage(est = 'UVPM',group = g)
