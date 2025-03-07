@@ -869,14 +869,24 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
       if (!dir.exists(o)) dir.create(o, recursive = TRUE)
       setwd(o)
       pdf(file = fname)
-      step <- round(max_val / 4, 0)
+      step <- ceiling(max_val / 4)  # Ensure step is an integer
+      
+      areas <- c(rgb(1, 0, 0, 0.25),  # Red fill with transparency
+                 rgb(0, 1, 0, 0.25))  # Green fill with transparency
+      
       radarchart(radar_data,
-        axistype = 1,
-        pcol = "blue", pfcol = "lightblue", plwd = 3,
-        title = chart_title, vlcex = 1,
-        cglcol = "gray", cglty = 1, axislabcol = "black",
-        caxislabels = seq(0, max_val, by = step)
+                 axistype = 1,
+                 pcol = 2:3,
+                 pfcol = areas,  # Fill the inner area with colors
+                 plwd = 3,
+                 title = chart_title, 
+                 vlcex = 2,
+                 cglcol = "gray", 
+                 cglty = 2, 
+                 axislabcol = "black",
+                 caxislabels = seq(0, max_val, by = step)  # Correctly spaced integer labels
       )
+      
 
       dev.off()
     }
@@ -966,22 +976,29 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
       if (!dir.exists(o)) dir.create(o, recursive = TRUE)
       setwd(o)
       pdf(file = fname,width = 9)
-      step <- max_val/4
+      step <- ceiling(max_val / 4)  # Ensure step is an integer
       
-      areas <- c(rgb(1, 0, 0, 0.25),
-                 rgb(0, 1, 0, 0.25))
-      print("Making Chart")
+      areas <- c(rgb(1, 0, 0, 0.25),  # Red fill with transparency
+                 rgb(0, 1, 0, 0.25))  # Green fill with transparency
+      
+      # Generate axis labels as character strings to prevent formatting issues
+      axis_labels <- as.character(seq(0, max_val, by = step))
+      
       radarchart(radar_data,
-        axistype = 1,
-        pcol = 2:3,
-        plwd = 3,
-        title = chart_title, 
-        vlcex = 2,
-        cglcol = "gray", 
-        cglty = 2, 
-        axislabcol = "black",
-        caxislabels = seq(0, max_val, by = step)
+                 axistype = 1,
+                 pcol = 2:3,
+                 pfcol = areas,  # Fill the inner area with colors
+                 plwd = 3,
+                 title = chart_title, 
+                 vlcex = 2,
+                 cglcol = "gray", 
+                 cglty = 2, 
+                 axislabcol = "black",
+                 caxislabels = axis_labels  # Ensure max value appears correctly
       )
+      
+      
+      
       
       legend("topright",
              legend = c("Larger","Smaller"),
@@ -997,7 +1014,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   }
 }
 
-CI_analysis()
+CI_analysis(g1 = 'fscd',g2 = "mmci")
 grouplist <- list("fcn", "fmci", "fscd", "mcn", "mmci", "mscd")
 
 for (g1_idx in 1:(length(grouplist) - 1)) {
