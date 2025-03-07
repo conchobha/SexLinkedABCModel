@@ -8,7 +8,7 @@ library(pROC)
 
 Heatmap <- function(g1, g2 = NA, av = TRUE,
                     modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
-                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps/",
+                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/",
                     order = TRUE) {
   # A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given
   # If a second group is given, it will give the difference between the two groups
@@ -62,14 +62,33 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
         lwd = 2
       )
 
-      text(
-        x = range[2] + 5, # Midpoint of the x range
-        y = flipped_ytop, # Slightly below the rectangle
-        labels = group$name, # Use the name from the list
-        cex = 0.7, # Adjust text size as needed
-        col = "black", # Text color
-        adj = c(0.5, 1) # Centered alignment
+      text_width <- strwidth(group$name, cex = 1.5) * 1.1  # Slightly larger for padding
+      text_height <- strheight(group$name, cex = 1.5) * 1.1 
+      
+      # Text position
+      text_x <- range[2] + 10
+      text_y <- .5+(flipped_ybottom + flipped_ytop) / 2
+      
+      # Draw yellow rectangle as a highlight behind text
+      rect(
+        xleft = text_x - text_width / 2,
+        ybottom = text_y - text_height / 2,
+        xright = text_x + text_width / 2,
+        ytop = text_y + text_height / 2,
+        col = "yellow", # Highlight color
+        border = NA # No border to keep it clean
       )
+      
+      # Draw text on top of the rectangle
+      text(
+        x = text_x, 
+        y = text_y, 
+        labels = group$name, 
+        cex = 1.5, 
+        col = "black", 
+        adj = c(0.5, 0.5) # Centered alignment
+      )
+      
     }
   }
 
@@ -89,8 +108,6 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   fname <- paste0(g1, "_heatmap.pdf")
   if (!is.na(g2)) {
     # load data for g2, if we are doing a comparison map
-
-
     if(av){
       g2name <- paste0("Average_", g2, "_UVPM.rds")
       g2data <- readRDS(g2name)
@@ -115,16 +132,17 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
-  pdf(file = fname)
+  pdf(file = fname, width = 9)
 
   # Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate.
   corrplot(m,
     method = "color",
     col = colorRampPalette(c("blue", "white", "red"))(200),
     tl.pos = "n", # Remove axis labels (numbers)
-    addgrid.col = "white",
+    #addgrid.col = "white",
     cl.pos = "b",
-    is.corr = FALSE
+    is.corr = FALSE,
+    cl.cex = 1.25
   )
   if (order) add_RSN_borders()
   dev.off()
@@ -179,7 +197,9 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", grou
   traceplot(mc1, ylab = "Covariance Estimate")
   dev.off()
 }
-Correlation <- function(modelname = "ADNI_Dr_combined_mean_10000_1000.rdata", modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output") {
+Correlation <- function(modelname = "ADNI_Dr_combined_mean_10000_1000.rdata", 
+                        modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output",
+                        rep = 1) {
   setwd(modelloc)
   data <- readRDS(modelname)
   model1 <- data$model
@@ -191,7 +211,7 @@ Correlation <- function(modelname = "ADNI_Dr_combined_mean_10000_1000.rdata", mo
   vec2 <- unlist(est_split)
   correlations <- cor(vec1, vec2)
   # View the correlation
-  print(paste0("Correlation for ", modelname, ": ", correlations))
+  print(paste0("Correlation for Rep ", rep, ": ", correlations))
   return(correlations)
 }
 histo <- function(modelname, metric,
@@ -985,12 +1005,13 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
     CI_analysis(g1 = g1,g2 = g2)
+    
   }
 }
 
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
-returnAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = 'fcn')
+MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = 'fcn')
 {
   # Load the files
   setwd(location)
@@ -1044,4 +1065,24 @@ returnAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/o
 CI_analysis(av = TRUE)
 
 
-for(g in grouplist) returnAverage(est = 'UVPM',group = g)
+
+
+
+replist <- c(1:10, 42)
+group <- 'fcn'
+
+for (g in grouplist){
+  print("---------------------")
+  print(g)
+  print("---------------------")
+  for (r in replist){
+  #set wd to the head folder
+    setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD")
+  #build the folder and file name 
+    modelloc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-",r)
+    filename <- paste0("ADNI_OD_",g,"_mean_2e+05_1000.rdata")
+  #call the correlation function 
+    Correlation(modelname = filename,modelloc = modelloc,rep = r)
+  }
+}
+
