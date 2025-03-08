@@ -736,7 +736,25 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   #' @param type defines the type of analysis. Can be l,m,a,c
   #' This measures if we see where g1 is significantly less than g2, more than, or both
   #' c denotes a combined plot
-  #' @TODO: Add support for combined plots
+  
+  reorder <- function(matrix_to_reorder) {
+    # Load the required data
+    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    
+    
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+    
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+    
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+    
+    return(reordered_mat)
+  }
+  
+  
   o <- paste0(outputdir, "/", type)
   CI <- function(x) {
     quantile(x, probs = c(0.025, 0.975))
@@ -781,16 +799,6 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   #   If they do not, add them to a list of regions that are different
   #   If they do, add them to a list of regions that are the same
 
-  # Initialize lists to store results
-  important_regions <- list(
-    list(name = "Cingulate", regions = list()),
-    list(name = "Frontal", regions = list()),
-    list(name = "Insular", regions = list()),
-    list(name = "Occipital", regions = list()),
-    list(name = "Parietal", regions = list()),
-    list(name = "Subcortical", regions = list()),
-    list(name = "Temporal", regions = list())
-  )
   # It wouldn't be wise to reconstruct the matrix, it'll be easier to parse manually
   # We know the order of the 84x83/2 goes through each row of the original matrix, until it can't anymore, then it goes to the next column
   # This matrix stores where we are in the original matrix, and which index in the list responds to that location
@@ -806,91 +814,11 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
       index <- index + 1
     }
   }
-
+  
+  r <- reorder(loc_matrix)
+  loc_matrix <- r
+  
   # Now, we can use this matrix to parse our data
-  if (type != "c") {
-    for (lobe in lobe_info) {
-      # Get the range of values
-      range <- lobe$range
-      # Get the name of the lobe
-      name <- lobe$name
-
-      # create empty list
-      regions <- list()
-      # if we aren't combining the two plots
-
-      for (i in range[1]:range[2]) { # Parse for each column
-        for (j in range[1]:range[2]) { # Parse for each Row
-          # check if we are in an out of range spot using the loc_matrix
-          n <- loc_matrix[i, j]
-          if (n == 0) next
-          # Get the CI's for each group using n
-          tmp1 <- hi.g1[n, ]
-          tmp2 <- hi.g2[n, ]
-
-          # check if they overlap
-          if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-            if (type == "l" && tmp1[2] <= tmp2[1]) {
-              regions <- append(regions, list(c(i, j)))
-            } else if (type == "g" && tmp1[1] >= tmp2[2]) {
-              regions <- append(regions, list(c(i, j)))
-            } else if (type == "a") regions <- append(regions, list(c(i, j)))
-          }
-        }
-      }
-      # Add the regions to the important regions list
-      important_regions[[which(sapply(important_regions, function(x) x$name) == name)]]$regions <- regions
-
-      df_connections <- data.frame(
-        Name = sapply(important_regions, function(x) x$name),
-        TotalConnections = sapply(important_regions, function(x) length(x$regions))
-      )
-
-      max_val <- max(df_connections$TotalConnections)
-      min_val <- 0
-
-      # make a radar chart of the data using the fmsb library
-      library(fmsb)
-
-      radar_data <- as.data.frame(rbind(
-        rep(max_val, nrow(df_connections)), # Max values
-        rep(min_val, nrow(df_connections)), # Min values
-        df_connections$TotalConnections # Actual values
-      ))
-
-      colnames(radar_data) <- df_connections$Name # Set column names
-      if (type == "a") {
-        chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
-      } else if (type == "l") {
-        chart_title <- paste0(g1, " is less than ", g2)
-      } else if (type == "g") chart_title <- paste0(g1, " is greater than ", g2)
-      # Create Spider Plot
-      fname <- paste0(g1, "_", g2, "_", type, "_spiderplot.pdf")
-      if (!dir.exists(o)) dir.create(o, recursive = TRUE)
-      setwd(o)
-      pdf(file = fname)
-      step <- ceiling(max_val / 4)  # Ensure step is an integer
-      
-      areas <- c(rgb(1, 0, 0, 0.25),  # Red fill with transparency
-                 rgb(0, 1, 0, 0.25))  # Green fill with transparency
-      
-      radarchart(radar_data,
-                 axistype = 1,
-                 pcol = 2:3,
-                 pfcol = areas,  # Fill the inner area with colors
-                 plwd = 3,
-                 title = chart_title, 
-                 vlcex = 2,
-                 cglcol = "gray", 
-                 cglty = 2, 
-                 axislabcol = "black",
-                 caxislabels = seq(0, max_val, by = step)  # Correctly spaced integer labels
-      )
-      
-
-      dev.off()
-    }
-  } else {
     Greater_Important <- list(
       list(name = "Cingulate", regions = list()),
       list(name = "Frontal", regions = list()),
@@ -911,40 +839,40 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
     
     
     # if we are making a combined plot
-        for (lobe in lobe_info) {
-      # Get the range of values
-      range <- lobe$range
-      # Get the name of the lobe
-      name <- lobe$name
+      for (lobe in lobe_info) {
+        # Get the range of values
+        range <- lobe$range
+        # Get the name of the lobe
+        name <- lobe$name
 
       # create empty list
-      Lower_regions <- list()
-      Greater_regions <- list()
-      # if we aren't combining the two plots
-
-      for (i in range[1]:range[2]) { # Parse for each column
-        for (j in range[1]:range[2]) { # Parse for each Row
-          # check if we are in an out of range spot using the loc_matrix
-          n <- loc_matrix[i, j]
-          if (n == 0) next
-          # Get the CI's for each group using n
-          tmp1 <- hi.g1[n, ]
-          tmp2 <- hi.g2[n, ]
-
-          # check if they overlap
-          if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-            if (tmp1[2] <= tmp2[1]) {
-              Lower_regions <- append(Lower_regions, list(c(i, j)))
-            } else if (tmp1[1] >= tmp2[2]) {
-              Greater_regions <- append(Greater_regions, list(c(i, j)))
-            } 
+        Lower_regions <- list()
+        Greater_regions <- list()
+        #We need to parse the reordered loc matrix, and use the correct index to check the CI's
+        for (i in range[1]:range[2]) { # Parse for each column
+          for (j in range[1]:range[2]) { # Parse for each Row
+            # if it is zero, we can pass this one
+            n <- loc_matrix[i,j]
+            if(n ==0 )next
+            # if it isnt, we need to grab the CI stored at that point
+            tmp1 <- hi.g1[n, ]
+            tmp2 <- hi.g2[n, ]
+            # check if they overlap
+            if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
+              if (tmp1[2] <= tmp2[1]) {
+                Lower_regions <- append(Lower_regions, list(c(i, j)))
+              } else if (tmp1[1] >= tmp2[2]) {
+                Greater_regions <- append(Greater_regions, list(c(i, j)))
+              } 
+            }
           }
         }
-      }
-      
-      # Add the regions to the important regions list
-      Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
-      Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions
+        #add the lower and greater to the total list
+        Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
+        Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions  
+
+          
+        }
       
       Greater_DF <- data.frame(
         Name = sapply(Greater_Important, function(x) x$name),
@@ -981,8 +909,14 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
       areas <- c(rgb(1, 0, 0, 0.25),  # Red fill with transparency
                  rgb(0, 1, 0, 0.25))  # Green fill with transparency
       
-      # Generate axis labels as character strings to prevent formatting issues
-      axis_labels <- as.character(seq(0, max_val, by = step))
+      # Generate correct axis labels
+      axis_labels <- seq(0, max_val, by = step)  # Generate sequence
+      if (tail(axis_labels, 1) != max_val) {  
+        axis_labels <- c(axis_labels, max_val)  # Ensure max_val is explicitly included
+      }
+      
+      # Convert labels to character to prevent automatic formatting issues
+      axis_labels <- as.character(axis_labels)
       
       radarchart(radar_data,
                  axistype = 1,
@@ -994,8 +928,10 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
                  cglcol = "gray", 
                  cglty = 2, 
                  axislabcol = "black",
-                 caxislabels = axis_labels  # Ensure max value appears correctly
+                 caxislabels = axis_labels  # Force correct label sequence
       )
+      
+      
       
       
       
@@ -1011,10 +947,10 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   
   
   
-  }
-}
+  
 
-CI_analysis(g1 = 'fscd',g2 = "mmci")
+
+CI_analysis(g1 = 'mmci',g2 = "mscd")
 grouplist <- list("fcn", "fmci", "fscd", "mcn", "mmci", "mscd")
 
 for (g1_idx in 1:(length(grouplist) - 1)) {
@@ -1102,4 +1038,21 @@ for (g in grouplist){
     Correlation(modelname = filename,modelloc = modelloc,rep = r)
   }
 }
+
+
+
+
+
+loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+
+# Start filling the upper triangle downwards, column by column
+index <- 1
+for (j in 2:84) { # Start from the second column
+  for (i in 1:(j - 1)) { # Only fill below the diagonal
+    loc_matrix[i, j] <- index
+    index <- index + 1
+  }
+}
+
+View(reorder(loc_matrix))
 
