@@ -629,10 +629,10 @@ find_smallest <- function(g1 = "fcn", g2 = "fmci", test = "t") {
 }
 
 
-findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx", dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/") {
+findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx", dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/", order = FALSE) {
   # Function to search for a given edge name, given its number
   library(readxl)
-
+  if(!order){
   if (!(number %in% 1:84)) {
     warning("Number not in Range")
     return("Number not in Range")
@@ -654,6 +654,11 @@ findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84RO
   # Return the String
   rm(df)
   return(result[9]) # Files have a structure R does not like, this works fine however
+  }else{
+    
+    
+
+  }
 }
 
 # Function to sort through a given group, and find the average standard deviation for that group
@@ -1054,5 +1059,121 @@ for (j in 2:84) { # Start from the second column
   }
 }
 
-View(reorder(loc_matrix))
+
+
+# Function to Print the top five regions in terms of differences between groups 
+difference <- function(g1,g2,modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",av = TRUE, res = 0) 
+{
+  reorder <- function(matrix_to_reorder) {
+    # Load the required data
+    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    
+    
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+    
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+    
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+    
+    return(reordered_mat)
+  }
+  setwd(modelloc)
+  # Load the UVPM data for each group
+  if(av){
+    g1name <- paste0("Average_",g1,"_UVPM.rds") 
+    g2name <- paste0("Average_",g2,"_UVPM.rds")
+
+    g1data <- readRDS(g1name)
+    g2data <- readRDS(g2name)
+
+    #reorder the matrices and check the lobes 
+    g1data <- reorder(g1data)
+    g2data <- reorder(g2data)
+  }else{ 
+    warning("Non-Average Data not supported yet")
+    return()
+  }
+
+    lobe_info <- list(
+    list(name = "Cingulate", range = c(1, 8)),
+    list(name = "Frontal", range = c(9, 30)),
+    list(name = "Insular", range = c(31, 32)),
+    list(name = "Occipital", range = c(33, 40)),
+    list(name = "Parietal", range = c(41, 50)),
+    list(name = "Subcortical", range = c(51, 64)),
+    list(name = "Temporal", range = c(65, 82))
+  )
+  # List to hold results, we want the top five differences in each lobe
+  lobe_results <- list(
+    list(name = "Cingulate", regions = list()),
+    list(name = "Frontal", regions = list()),
+    list(name = "Insular", regions = list()),
+    list(name = "Occipital", regions = list()),
+    list(name = "Parietal", regions = list()),
+    list(name = "Subcortical", regions = list()),
+    list(name = "Temporal", regions = list())
+  )
+  pos_result <- g1data - g2data
+  neg_result <- g2data - g1data
+  abs_result <- abs(g1data - g2data)
+  # find the top 10 combinations
+  if (res == 1) {
+    result_matrix <- pos_result
+  } else if (res == -1) {
+    result_matrix <- neg_result
+  } else {
+    result_matrix <- abs_result
+  }
+  # Parse the data
+  for(lobe in lobe_info){
+    # Get the range 
+    range <- lobe$range
+    # Get the name of the lobe
+    name <- lobe$name
+    # Create an empty list to store the regions
+    regions <- list()
+    # Parse the data
+    for(i in range[1]:range[2]){
+      for(j in range[1]:range[2]){
+        # Get the index
+        n <- result_matrix[i,j]
+        # append the n, and index into the result list
+        regions <- append(regions, list(c(n,i,j)))
+      }
+    }
+    # Sort the regions by the first value
+    regions <- regions[order(sapply(regions, function(x) x[1]), decreasing = TRUE)]
+    # Add the top five regions to the lobe_results list
+    lobe_results[[which(sapply(lobe_results, function(x) x$name) == name)]]$regions <- regions[1:5]
+  }
+
+  # instead of index, we should get the connection region names
+    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    #sort final df by the lobe
+    sorted_df <- final_df[order(final_df$LOBE), ]
+    
+    for(lobe in lobe_results){
+      for(connect in lobe$regions){
+        # Get the connection region names
+        n <- connect[1]
+        i <- connect[2]
+        j <- connect[3]
+        # Get the region names
+        # use the row number of the sorted df to get the region names
+        region1 <- sorted_df$ROI[i]
+        region2 <- sorted_df$ROI[j]
+        # replace the data in the lobe_results list with the region names
+        connect <- c(n,region1,region2)
+      }
+    }
+
+  # Print the results
+  print(lapply(lobe_results, function(x) x$name))
+  print(lapply(lobe_results, function(x) x$regions))
+
+
+}
 
