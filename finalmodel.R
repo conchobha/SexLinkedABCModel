@@ -10,23 +10,23 @@ grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd') # Ensure correct name
 
 args = commandArgs(trailingOnly = TRUE)
 #We are going to be passing the group and replication, group
-group <- grouplist[as.numeric(args[1])] # 6 groups
-dm <- 'OD'
-rep <- 42
+group <- grouplist[1] # 6 groups
+DM <- as.numeric(args[1])
+rep <- as.numeric(args[2])
 # Pull Which dim we are using 
 #for OD
 #dm 1 for FCN, 2 for others 
-d <- 2
-if(group == "fcn"){ d <- 1}
 
+dm <- 'OD'
 
-output_loc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/",dm,"/Rep-",rep,"/")
+output_loc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/",DM,"/Rep-",rep,"/")
 if (!dir.exists(output_loc)) dir.create(output_loc,recursive = TRUE)
+set.seed(rep)
 
 RunModel(dataname=dm,
-         dn=d,
+         dn=DM,
          num=rep,
-         sn=200000,
+         sn=50000,
          group=group,
          outputDIR=output_loc
          )

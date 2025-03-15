@@ -728,7 +728,8 @@ findavSD <- function(group) {
 CI_analysis <- function(g1 = "fcn", g2 = "fmci",
                         modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                         type = "c",
-                        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots", av = TRUE) {
+                        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots", av = TRUE) 
+  {
   #' @param outputdir defines the output directory for the plots
   #' @param modelloc defines the location of the models
   #' @param g1 defines the first group
