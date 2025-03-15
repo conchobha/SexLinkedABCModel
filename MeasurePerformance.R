@@ -62,13 +62,13 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
         lwd = 2
       )
 
-      text_width <- strwidth(group$name, cex = 1.5) * 1.1  # Slightly larger for padding
-      text_height <- strheight(group$name, cex = 1.5) * 1.1 
-      
+      text_width <- strwidth(group$name, cex = 1.5) * 1.1 # Slightly larger for padding
+      text_height <- strheight(group$name, cex = 1.5) * 1.1
+
       # Text position
       text_x <- range[2] + 10
-      text_y <- .5+(flipped_ybottom + flipped_ytop) / 2
-      
+      text_y <- .5 + (flipped_ybottom + flipped_ytop) / 2
+
       # Draw yellow rectangle as a highlight behind text
       rect(
         xleft = text_x - text_width / 2,
@@ -78,49 +78,48 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
         col = "yellow", # Highlight color
         border = NA # No border to keep it clean
       )
-      
+
       # Draw text on top of the rectangle
       text(
-        x = text_x, 
-        y = text_y, 
-        labels = group$name, 
-        cex = 1.5, 
-        col = "black", 
+        x = text_x,
+        y = text_y,
+        labels = group$name,
+        cex = 1.5,
+        col = "black",
         adj = c(0.5, 0.5) # Centered alignment
       )
-      
     }
   }
 
   setwd(modeldir)
   o <- outputdir
-  if (av){
+  if (av) {
     # load the data for g1
     g1name <- paste0("Average_", g1, "_UVPM.rds")
     g1data <- readRDS(g1name)
-  }else{
-  # load the data for g1
-  g1name <- paste0("ADNI_OD_", g1, "_mean_1e+05_1000.rdata")
-  data <- readRDS(g1name)
-  model <- data$model
-  g1data <- model$UVPM
+  } else {
+    # load the data for g1
+    g1name <- paste0("ADNI_OD_", g1, "_mean_1e+05_1000.rdata")
+    data <- readRDS(g1name)
+    model <- data$model
+    g1data <- model$UVPM
   }
   fname <- paste0(g1, "_heatmap.pdf")
   if (!is.na(g2)) {
     # load data for g2, if we are doing a comparison map
-    if(av){
+    if (av) {
       g2name <- paste0("Average_", g2, "_UVPM.rds")
       g2data <- readRDS(g2name)
       matrix_data <- g1data - g2data
-    }else{
-    g2name <- paste0("ADNI_OD_", g2, "_mean_1e+05_1000.rdata")
-    data <- readRDS(g2name)
-    model <- data$model
-    g2data <- model$UVPM
-    matrix_data <- g1data - g2data
-    fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
+    } else {
+      g2name <- paste0("ADNI_OD_", g2, "_mean_1e+05_1000.rdata")
+      data <- readRDS(g2name)
+      model <- data$model
+      g2data <- model$UVPM
+      matrix_data <- g1data - g2data
+      fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
     }
-  }else {
+  } else {
     matrix_data <- g1data
   }
 
@@ -139,7 +138,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
     method = "color",
     col = colorRampPalette(c("blue", "white", "red"))(200),
     tl.pos = "n", # Remove axis labels (numbers)
-    #addgrid.col = "white",
+    # addgrid.col = "white",
     cl.pos = "b",
     is.corr = FALSE,
     cl.cex = 1.25
@@ -197,7 +196,7 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", grou
   traceplot(mc1, ylab = "Covariance Estimate")
   dev.off()
 }
-Correlation <- function(modelname = "ADNI_Dr_combined_mean_10000_1000.rdata", 
+Correlation <- function(modelname = "ADNI_Dr_combined_mean_10000_1000.rdata",
                         modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output",
                         rep = 1) {
   setwd(modelloc)
@@ -632,31 +631,31 @@ find_smallest <- function(g1 = "fcn", g2 = "fmci", test = "t") {
 findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84ROIcombo.xlsx", dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/", order = FALSE) {
   # Function to search for a given edge name, given its number
   library(readxl)
-  if(!order){
-  if (!(number %in% 1:84)) {
-    warning("Number not in Range")
-    return("Number not in Range")
-  }
+  if (!order) {
+    if (!(number %in% 1:84)) {
+      warning("Number not in Range")
+      return("Number not in Range")
+    }
 
-  # Open the file that stores the key
-  setwd(dataloc) # Sets Directory to the data directory
+    # Open the file that stores the key
+    setwd(dataloc) # Sets Directory to the data directory
 
-  # Suppress messages and warnings while reading the Excel file
-  suppressMessages({ # Currently slow, could improve by optionally giving it an already loaded file
-    suppressWarnings({
-      df <- read_excel(filename, sheet = 2)
+    # Suppress messages and warnings while reading the Excel file
+    suppressMessages({ # Currently slow, could improve by optionally giving it an already loaded file
+      suppressWarnings({
+        df <- read_excel(filename, sheet = 2)
+      })
     })
-  })
 
-  # Go to the Index
-  result <- df$ICV[df$`...5` == number]
+    # Go to the Index
+    result <- df$ICV[df$`...5` == number]
 
-  # Return the String
-  rm(df)
-  return(result[9]) # Files have a structure R does not like, this works fine however
-  }else{
-    
-    
+    # Return the String
+    rm(df)
+    return(result[9]) # Files have a structure R does not like, this works fine however
+  } else {
+
+
 
   }
 }
@@ -741,25 +740,25 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   #' @param type defines the type of analysis. Can be l,m,a,c
   #' This measures if we see where g1 is significantly less than g2, more than, or both
   #' c denotes a combined plot
-  
+
   reorder <- function(matrix_to_reorder) {
     # Load the required data
     load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
-    
-    
+
+
     # Sort the data frame by the 'LOBE' column
     sorted_df <- final_df[order(final_df$LOBE), ]
-    
+
     # Reorder the rows based on the sorted indices
     sorted_indices <- sorted_df$row_number
-    
+
     # Reorder both rows and columns of the matrix
     reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
-    
+
     return(reordered_mat)
   }
-  
-  
+
+
   o <- paste0(outputdir, "/", type)
   CI <- function(x) {
     quantile(x, probs = c(0.025, 0.975))
@@ -774,32 +773,31 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
     list(name = "Subcortical", range = c(51, 64)),
     list(name = "Temporal", range = c(65, 82))
   )
-  if(av){ # if we are using average data 
+  if (av) { # if we are using average data
     setwd(modelloc)
     model1name <- paste0("Average_", g1, "_UVC.rds")
     model2name <- paste0("Average_", g2, "_UVC.rds")
     UVC1 <- readRDS(model1name)
     UVC2 <- readRDS(model2name)
-  }else{
- 
-  setwd(modelloc)
-  model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
-  model1 <- readRDS(model1name)
-  model1 <- model1$model
-  model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
-  model2 <- readRDS(model2name)
-  model2 <- model2$model
-  UVC2 <- model2$UVC
-  UVC1 <- model1$UVC
+  } else {
+    setwd(modelloc)
+    model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
+    model1 <- readRDS(model1name)
+    model1 <- model1$model
+    model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
+    model2 <- readRDS(model2name)
+    model2 <- model2$model
+    UVC2 <- model2$UVC
+    UVC1 <- model1$UVC
   }
   # Generate the CI's for g1
   hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
   # How to find which one is the unique region????
   # do the same for g2
-  
+
   # Generate the CI's for g2
   hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
-  
+
   # Look for regions in each lobe region in where the CI's do not overlap
   #   If they do not, add them to a list of regions that are different
   #   If they do, add them to a list of regions that are the same
@@ -819,158 +817,159 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
       index <- index + 1
     }
   }
-  
+
   r <- reorder(loc_matrix)
   loc_matrix <- r
-  
-  # Now, we can use this matrix to parse our data
-    Greater_Important <- list(
-      list(name = "Cingulate", regions = list()),
-      list(name = "Frontal", regions = list()),
-      list(name = "Insular", regions = list()),
-      list(name = "Occipital", regions = list()),
-      list(name = "Parietal", regions = list()),
-      list(name = "Subcortical", regions = list()),
-      list(name = "Temporal", regions = list()))
-      
-    Lower_Important <- list(
-        list(name = "Cingulate", regions = list()),
-        list(name = "Frontal", regions = list()),
-        list(name = "Insular", regions = list()),
-        list(name = "Occipital", regions = list()),
-        list(name = "Parietal", regions = list()),
-        list(name = "Subcortical", regions = list()),
-        list(name = "Temporal", regions = list()))
-    
-    
-    # if we are making a combined plot
-      for (lobe in lobe_info) {
-        # Get the range of values
-        range <- lobe$range
-        # Get the name of the lobe
-        name <- lobe$name
 
-      # create empty list
-        Lower_regions <- list()
-        Greater_regions <- list()
-        #We need to parse the reordered loc matrix, and use the correct index to check the CI's
-        for (i in range[1]:range[2]) { # Parse for each column
-          for (j in range[1]:range[2]) { # Parse for each Row
-            # if it is zero, we can pass this one
-            n <- loc_matrix[i,j]
-            if(n ==0 )next
-            # if it isnt, we need to grab the CI stored at that point
-            tmp1 <- hi.g1[n, ]
-            tmp2 <- hi.g2[n, ]
-            # check if they overlap
-            if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-              if (tmp1[2] <= tmp2[1]) {
-                Lower_regions <- append(Lower_regions, list(c(i, j)))
-              } else if (tmp1[1] >= tmp2[2]) {
-                Greater_regions <- append(Greater_regions, list(c(i, j)))
-              } 
-            }
+  # Now, we can use this matrix to parse our data
+  Greater_Important <- list(
+    list(name = "Cingulate", regions = list()),
+    list(name = "Frontal", regions = list()),
+    list(name = "Insular", regions = list()),
+    list(name = "Occipital", regions = list()),
+    list(name = "Parietal", regions = list()),
+    list(name = "Subcortical", regions = list()),
+    list(name = "Temporal", regions = list())
+  )
+
+  Lower_Important <- list(
+    list(name = "Cingulate", regions = list()),
+    list(name = "Frontal", regions = list()),
+    list(name = "Insular", regions = list()),
+    list(name = "Occipital", regions = list()),
+    list(name = "Parietal", regions = list()),
+    list(name = "Subcortical", regions = list()),
+    list(name = "Temporal", regions = list())
+  )
+
+
+  # if we are making a combined plot
+  for (lobe in lobe_info) {
+    # Get the range of values
+    range <- lobe$range
+    # Get the name of the lobe
+    name <- lobe$name
+
+    # create empty list
+    Lower_regions <- list()
+    Greater_regions <- list()
+    # We need to parse the reordered loc matrix, and use the correct index to check the CI's
+    for (i in range[1]:range[2]) { # Parse for each column
+      for (j in range[1]:range[2]) { # Parse for each Row
+        # if it is zero, we can pass this one
+        n <- loc_matrix[i, j]
+        if (n == 0) next
+        # if it isnt, we need to grab the CI stored at that point
+        tmp1 <- hi.g1[n, ]
+        tmp2 <- hi.g2[n, ]
+        # check if they overlap
+        if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
+          if (tmp1[2] <= tmp2[1]) {
+            Lower_regions <- append(Lower_regions, list(c(i, j)))
+          } else if (tmp1[1] >= tmp2[2]) {
+            Greater_regions <- append(Greater_regions, list(c(i, j)))
           }
         }
-        #add the lower and greater to the total list
-        Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
-        Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions  
-
-          
-        }
-      
-      Greater_DF <- data.frame(
-        Name = sapply(Greater_Important, function(x) x$name),
-        TotalConnections = sapply(Greater_Important, function(x) length(x$regions))
-      )
-
-      Lower_DF <- data.frame(
-        Name = sapply(Lower_Important, function(x) x$name),
-        TotalConnections = sapply(Lower_Important, function(x) length(x$regions))
-      )
-
-      max_val <- max(Greater_DF$TotalConnections, Lower_DF$TotalConnections)
-      min_val <- 0
-
-      # make a radar chart of the data using the fmsb library
-      library(fmsb)
-
-      radar_data <- as.data.frame(rbind(
-        rep(max_val, nrow(Greater_DF)), # Max values
-        rep(min_val, nrow(Greater_DF)), # Min values
-        Greater_DF$TotalConnections,
-        Lower_DF$TotalConnections # Actual values
-      ))
-      
-      colnames(radar_data) <- Greater_DF$Name # Set column names
-      chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
-      # Create Spider Plot
-      fname <- paste0(g1, "_", g2,"_spiderplot.pdf")
-      if (!dir.exists(o)) dir.create(o, recursive = TRUE)
-      setwd(o)
-      pdf(file = fname,width = 9)
-      step <- ceiling(max_val / 4)  # Ensure step is an integer
-      
-      areas <- c(rgb(1, 0, 0, 0.25),  # Red fill with transparency
-                 rgb(0, 1, 0, 0.25))  # Green fill with transparency
-      
-      # Generate correct axis labels
-      axis_labels <- seq(0, max_val, by = step)  # Generate sequence
-      if (tail(axis_labels, 1) != max_val) {  
-        axis_labels <- c(axis_labels, max_val)  # Ensure max_val is explicitly included
       }
-      
-      # Convert labels to character to prevent automatic formatting issues
-      axis_labels <- as.character(axis_labels)
-      
-      radarchart(radar_data,
-                 axistype = 1,
-                 pcol = 2:3,
-                 pfcol = areas,  # Fill the inner area with colors
-                 plwd = 3,
-                 title = chart_title, 
-                 vlcex = 2,
-                 cglcol = "gray", 
-                 cglty = 2, 
-                 axislabcol = "black",
-                 caxislabels = axis_labels  # Force correct label sequence
-      )
-      
-      
-      
-      
-      
-      
-      legend("topright",
-             legend = c("Larger","Smaller"),
-             bty = "n", pch = 20, col = areas,
-             text.col = "grey25", pt.cex = 2)
-      
-      
-      dev.off()
     }
-  
-  
-  
-  
+    # add the lower and greater to the total list
+    Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
+    Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions
+  }
+
+  Greater_DF <- data.frame(
+    Name = sapply(Greater_Important, function(x) x$name),
+    TotalConnections = sapply(Greater_Important, function(x) length(x$regions))
+  )
+
+  Lower_DF <- data.frame(
+    Name = sapply(Lower_Important, function(x) x$name),
+    TotalConnections = sapply(Lower_Important, function(x) length(x$regions))
+  )
+
+  max_val <- max(Greater_DF$TotalConnections, Lower_DF$TotalConnections)
+  min_val <- 0
+
+  # make a radar chart of the data using the fmsb library
+  library(fmsb)
+
+  radar_data <- as.data.frame(rbind(
+    rep(max_val, nrow(Greater_DF)), # Max values
+    rep(min_val, nrow(Greater_DF)), # Min values
+    Greater_DF$TotalConnections,
+    Lower_DF$TotalConnections # Actual values
+  ))
+
+  colnames(radar_data) <- Greater_DF$Name # Set column names
+  chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
+  # Create Spider Plot
+  fname <- paste0(g1, "_", g2, "_spiderplot.pdf")
+  if (!dir.exists(o)) dir.create(o, recursive = TRUE)
+  setwd(o)
+  pdf(file = fname, width = 9)
+  step <- ceiling(max_val / 4) # Ensure step is an integer
+
+  areas <- c(
+    rgb(1, 0, 0, 0.25), # Red fill with transparency
+    rgb(0, 1, 0, 0.25)
+  ) # Green fill with transparency
+
+  # Generate correct axis labels
+  axis_labels <- seq(0, max_val, by = step) # Generate sequence
+  if (tail(axis_labels, 1) != max_val) {
+    axis_labels <- c(axis_labels, max_val) # Ensure max_val is explicitly included
+  }
+
+  # Convert labels to character to prevent automatic formatting issues
+  axis_labels <- as.character(axis_labels)
+
+  radarchart(radar_data,
+    axistype = 1,
+    pcol = 2:3,
+    pfcol = areas, # Fill the inner area with colors
+    plwd = 3,
+    title = chart_title,
+    vlcex = 2,
+    cglcol = "gray",
+    cglty = 2,
+    axislabcol = "black",
+    caxislabels = axis_labels # Force correct label sequence
+  )
 
 
-CI_analysis(g1 = 'mmci',g2 = "mscd")
+
+
+
+
+  legend("topright",
+    legend = c("Larger", "Smaller"),
+    bty = "n", pch = 20, col = areas,
+    text.col = "grey25", pt.cex = 2
+  )
+
+
+  dev.off()
+}
+
+
+
+
+
+
+CI_analysis(g1 = "mmci", g2 = "mscd")
 grouplist <- list("fcn", "fmci", "fscd", "mcn", "mmci", "mscd")
 
 for (g1_idx in 1:(length(grouplist) - 1)) {
   for (g2_idx in (g1_idx + 1):length(grouplist)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
-    CI_analysis(g1 = g1,g2 = g2)
-    
+    CI_analysis(g1 = g1, g2 = g2)
   }
 }
 
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
-MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = 'fcn')
-{
+MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = "fcn") {
   # Load the files
   setwd(location)
   # Get a list of all the folders in the directory
@@ -978,38 +977,33 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   # Initialize a list to store the data
   data_list <- list()
   # Loop through each folder
-  for(folder in folders)
+  for (folder in folders)
   {
     # Get the file name
     filename <- paste0("ADNI_OD_", group, "_mean_2e+05_1000.rdata")
     # Check if the file exists in the folder
-    if(file.exists(paste0(folder, "/", filename)))
-    {
+    if (file.exists(paste0(folder, "/", filename))) {
       # Load the file
       data <- readRDS(paste0(folder, "/", filename))
       # Extract the model
       model <- data$model
       # Extract the UVC or UVPM
-      if(est == "UVC")
-      {
+      if (est == "UVC") {
         data_list[[folder]] <- model$UVC
-      }
-      else if(est == "UVPM")
-      {
+      } else if (est == "UVPM") {
         data_list[[folder]] <- model$UVPM
       }
     }
   }
 
-  #make the average matrix, and save it as a file in location
-  if(length(data_list) > 0)
-  {
+  # make the average matrix, and save it as a file in location
+  if (length(data_list) > 0) {
     # Get the dimensions of the matrix
     dim1 <- dim(data_list[[1]])
     # Initialize a matrix to store the average
     average_matrix <- matrix(0, nrow = dim1[1], ncol = dim1[2])
     # Loop through each matrix and add it to the average
-    for(matrix in data_list)
+    for (matrix in data_list)
     {
       average_matrix <- average_matrix + matrix
     }
@@ -1020,6 +1014,61 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   }
 }
 
+AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn") {
+  # Plan:
+  # Build a matrix of the Correlation in each model
+  # Find the average of each model
+  # Save the average as a file
+
+  GetCorr <- function(filename) {
+    data <- readRDS(filename)
+    # Extract the model
+    model1 <- data$model
+    x_test <- data$testX
+    l <- length(x_test)
+    est <- model1$EFlPM
+    est_split <- est[1:l]
+    vec1 <- unlist(x_test)
+    vec2 <- unlist(est_split)
+    correlations <- cor(vec1, vec2)
+    return(correlations)
+  }
+
+
+  setwd(location)
+  filename <- paste0("ADNI_OD_", group, "_mean_50000_1000.rdata")
+
+  # Get a matrix to store the correlations, 1-8 for Dim, 1-10 for each rep
+  corr_matrix <- matrix(0, nrow = 8, ncol = 10)
+
+
+  # for each Dim, we need to find the correlation for each rep
+  # Get a list of all the folders in the directory
+  Dimfolders <- list.dirs(location, full.names = FALSE, recursive = FALSE)
+  # Loop through each folder
+  for (folder in Dimfolders)
+  {
+    # for each rep in that folder
+    for (rep in 1:10)
+    {
+      # Get the file name
+      filename <- paste0(rep, "/", filename)
+      # Check if the file exists in the folder
+      if (file.exists(filename)) {
+        # Load the file
+        value <- GetCorr(filename)
+        # Store the value in the matrix
+        corr_matrix[as.numeric(folder), rep] <- value
+      }
+    }
+    # average all results, and save as a file
+  }
+  # Average the matrix for each Dim
+  avg_corr <- rowMeans(corr_matrix, na.rm = TRUE)
+  # Save the average as a file
+  saveRDS(avg_corr, paste0(location, "Average_", group, "_Corr.rds"))
+}
+
 CI_analysis(av = TRUE)
 
 
@@ -1027,20 +1076,20 @@ CI_analysis(av = TRUE)
 
 
 replist <- c(1:10, 42)
-group <- 'fcn'
+group <- "fcn"
 
-for (g in grouplist){
+for (g in grouplist) {
   print("---------------------")
   print(g)
   print("---------------------")
-  for (r in replist){
-  #set wd to the head folder
+  for (r in replist) {
+    # set wd to the head folder
     setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD")
-  #build the folder and file name 
-    modelloc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-",r)
-    filename <- paste0("ADNI_OD_",g,"_mean_2e+05_1000.rdata")
-  #call the correlation function 
-    Correlation(modelname = filename,modelloc = modelloc,rep = r)
+    # build the folder and file name
+    modelloc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-", r)
+    filename <- paste0("ADNI_OD_", g, "_mean_2e+05_1000.rdata")
+    # call the correlation function
+    Correlation(modelname = filename, modelloc = modelloc, rep = r)
   }
 }
 
@@ -1061,43 +1110,42 @@ for (j in 2:84) { # Start from the second column
 
 
 
-# Function to Print the top five regions in terms of differences between groups 
-difference <- function(g1,g2,modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",av = TRUE, res = 0) 
-{
+# Function to Print the top five regions in terms of differences between groups
+difference <- function(g1, g2, modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", av = TRUE, res = 0) {
   reorder <- function(matrix_to_reorder) {
     # Load the required data
     load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
-    
-    
+
+
     # Sort the data frame by the 'LOBE' column
     sorted_df <- final_df[order(final_df$LOBE), ]
-    
+
     # Reorder the rows based on the sorted indices
     sorted_indices <- sorted_df$row_number
-    
+
     # Reorder both rows and columns of the matrix
     reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
-    
+
     return(reordered_mat)
   }
   setwd(modelloc)
   # Load the UVPM data for each group
-  if(av){
-    g1name <- paste0("Average_",g1,"_UVPM.rds") 
-    g2name <- paste0("Average_",g2,"_UVPM.rds")
+  if (av) {
+    g1name <- paste0("Average_", g1, "_UVPM.rds")
+    g2name <- paste0("Average_", g2, "_UVPM.rds")
 
     g1data <- readRDS(g1name)
     g2data <- readRDS(g2name)
 
-    #reorder the matrices and check the lobes 
+    # reorder the matrices and check the lobes
     g1data <- reorder(g1data)
     g2data <- reorder(g2data)
-  }else{ 
+  } else {
     warning("Non-Average Data not supported yet")
     return()
   }
 
-    lobe_info <- list(
+  lobe_info <- list(
     list(name = "Cingulate", range = c(1, 8)),
     list(name = "Frontal", range = c(9, 30)),
     list(name = "Insular", range = c(31, 32)),
@@ -1128,20 +1176,20 @@ difference <- function(g1,g2,modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProjec
     result_matrix <- abs_result
   }
   # Parse the data
-  for(lobe in lobe_info){
-    # Get the range 
+  for (lobe in lobe_info) {
+    # Get the range
     range <- lobe$range
     # Get the name of the lobe
     name <- lobe$name
     # Create an empty list to store the regions
     regions <- list()
     # Parse the data
-    for(i in range[1]:range[2]){
-      for(j in range[1]:range[2]){
+    for (i in range[1]:range[2]) {
+      for (j in range[1]:range[2]) {
         # Get the index
-        n <- result_matrix[i,j]
+        n <- result_matrix[i, j]
         # append the n, and index into the result list
-        regions <- append(regions, list(c(n,i,j)))
+        regions <- append(regions, list(c(n, i, j)))
       }
     }
     # Sort the regions by the first value
@@ -1151,29 +1199,26 @@ difference <- function(g1,g2,modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProjec
   }
 
   # instead of index, we should get the connection region names
-    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
-    #sort final df by the lobe
-    sorted_df <- final_df[order(final_df$LOBE), ]
-    
-    for(lobe in lobe_results){
-      for(connect in lobe$regions){
-        # Get the connection region names
-        n <- connect[1]
-        i <- connect[2]
-        j <- connect[3]
-        # Get the region names
-        # use the row number of the sorted df to get the region names
-        region1 <- sorted_df$ROI[i]
-        region2 <- sorted_df$ROI[j]
-        # replace the data in the lobe_results list with the region names
-        connect <- c(n,region1,region2)
-      }
+  load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+  # sort final df by the lobe
+  sorted_df <- final_df[order(final_df$LOBE), ]
+
+  for (lobe in lobe_results) {
+    for (connect in lobe$regions) {
+      # Get the connection region names
+      n <- connect[1]
+      i <- connect[2]
+      j <- connect[3]
+      # Get the region names
+      # use the row number of the sorted df to get the region names
+      region1 <- sorted_df$ROI[i]
+      region2 <- sorted_df$ROI[j]
+      # replace the data in the lobe_results list with the region names
+      connect <- c(n, region1, region2)
     }
+  }
 
   # Print the results
   print(lapply(lobe_results, function(x) x$name))
   print(lapply(lobe_results, function(x) x$regions))
-
-
 }
-
