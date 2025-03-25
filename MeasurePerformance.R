@@ -1115,7 +1115,11 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   }
   # Average the matrix for each Dim
   avg_corr <- rowMeans(corr_matrix, na.rm = TRUE)
-  # Save the average as a file
+
+  # We also want the SD of the matrix
+  sd_corr <- apply(corr_matrix, 1, sd, na.rm = TRUE)
+  # Save both of these as a rdata file, to be read later
+  saveRDS(sd_corr, paste0(location, "SD_", group, "_Corr.rds"))
   saveRDS(avg_corr, paste0(location, "Average_", group, "_Corr.rds"))
 }
 
@@ -1124,9 +1128,10 @@ CI_analysis(av = TRUE)
 
 for(g in grouplist){
   AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/" , group = g)
-  data <- readRDS(paste0("Average_", g, "_Corr.rds"))
+  cordata <- readRDS(paste0("Average_", g, "_Corr.rds"))
+  sddata <- readRDS(paste0("SD_", g, "_Corr.rds"))
   print(g)
-  print(data)
+  print(paste(cordata, " +=", sddata ))
 }
 
 
