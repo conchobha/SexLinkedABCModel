@@ -13,7 +13,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   # A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given
   # If a second group is given, it will give the difference between the two groups
   library(corrplot)
-
+  Flag <- FALSE
   reorder <- function(matrix_to_reorder) {
     # Load the required data
     load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
@@ -104,45 +104,70 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
     model <- data$model
     g1data <- model$UVPM
   }
-  fname <- paste0(g1, "_heatmap.pdf")
+  fname <- paste0(g1, "_heatmap2.pdf")
   if (!is.na(g2)) {
     # load data for g2, if we are doing a comparison map
     if (av) {
       g2name <- paste0("Average_", g2, "_UVPM.rds")
       g2data <- readRDS(g2name)
-      matrix_data <- g1data - g2data
     } else {
       g2name <- paste0("ADNI_OD_", g2, "_mean_1e+05_1000.rdata")
       data <- readRDS(g2name)
       model <- data$model
       g2data <- model$UVPM
-      matrix_data <- g1data - g2data
-      fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
     }
-  } else {
-    matrix_data <- g1data
-  }
+    Flag <- TRUE
+    fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
+    matrix_data <- g1data - g2data
+  } else matrix_data <- g1data # if we are only looking at the heatmap of one group
+  
 
-  if (order) {
-    m <- reorder(matrix_data)
-  } else {
-    m <- matrix_data
-  }
+  if (order) m <- reorder(matrix_data)
+  else m <- matrix_data
+  
 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
-  pdf(file = fname, width = 9)
+  pdf(file = fname, width =8.5) #12 if we are doing full size, 8.5 if side by side 
 
   # Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate.
-  corrplot(m,
-    method = "color",
-    col = colorRampPalette(c("blue", "white", "red"))(200),
-    tl.pos = "n", # Remove axis labels (numbers)
-    # addgrid.col = "white",
-    cl.pos = "b",
-    is.corr = FALSE,
-    cl.cex = 1.25
-  )
+  if(Flag){
+    library(corrplot)
+    
+    # Define a matrix of colors based on sign, making 0 white
+    col_matrix <- ifelse(abs(m) < 0.05, "white", 
+                         ifelse(m < 0, "#1F77B4", "#FF7F0E"))
+    
+    # Plot the full correlation matrix (no triangle mask)
+    corrplot(m,
+             method = "color",
+             col = col_matrix,
+             tl.pos = "n",   # Remove axis labels (numbers)
+             cl.pos = "n",   # Remove default color legend
+             is.corr = FALSE
+    )
+    
+    # Add a custom legend on the right
+    legend("right", legend = c("Smaller", "Near no difference", "Larger"), 
+          fill = c("#1F77B4", "#FFFFFF", "#FF7F0E"), 
+           bty = "n", cex = 1.2)
+    
+    
+  }else {
+    corrplot(m,
+             method = "color",
+             col = colorRampPalette(c("#1F77B4","white", "#FF7F0E"))(200),
+             tl.pos = "n", # Remove axis labels (numbers)
+             # addgrid.col = "white",
+             cl.pos = "b",
+             is.corr = FALSE,
+             col.lim = c(-0.2,.305),
+             cl.cex = 1.25
+    )
+    
+    }
+  
+  
   if (order) add_RSN_borders()
   dev.off()
 }
@@ -182,14 +207,27 @@ subjectHeatmap <- function(group) {
 
 
 
-Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", group, filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1/") {
+Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", 
+                      group, av = TRUE, 
+                      filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD") {
+  library(coda)
   setwd(filedir)
+  if(!av){
   data <- readRDS(modelname)
   model1 <- data$model
   UVPM1 <- model1$UVPM
-  UVC1 <- model1$UVC[4500:7500, 90:100]
-  # model1$TAC
   l <- data$sn / 10
+  UVC1 <- model1$UVC[4500:7500, 90:100]
+  }else{
+    UVC_name <- paste0("Average_",group,"_UVC.rds")
+    UVPM_name <- paste0("Average_",group,"_UVPM.rds")
+    UV <- readRDS(UVC_name)
+    UVC1 <- UV[4500:5500, 90:100]
+    UVPM1 <- readRDS(UVPM_name)
+    l <- 200000/10
+  }
+  # model1$TAC
+  
   mc1 <- mcmc(data = UVC1, start = 1, end = nrow(UVC1), thin = 1)
   setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/Traceplots")
   pdf(file = paste0(group, "_Traceplot.pdf"))
@@ -363,12 +401,18 @@ print_values_from_rdata <- function(directory) {
 }
 # Confidence intervals
 # Prints a confidence interval for the given group, comparing the UVPM between the healthy and unhealthy participants in those groups
-CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-1/") {
+CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",av = TRUE) {
   library(dplyr)
   setwd(modeldir) # Set the Directory to where we store the models
+  if(!av){
   cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_1e+05_1000.rdata") # file name for the cn group
   mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_1e+05_1000.rdata") # file name for mci group
-
+  }else{
+    cn_UVC_name <- paste0("Average_",group,"cn_UVC.rds")
+    cn_UVPM_name <- paste0("Average_",group,"cn_UVPM.rds")
+    mci_UVC_name <- paste0("Average_",group,"mci_UVC.rds")
+    mci_UVPM_name <- paste0("Average_",group,"mci_UVPM.rds")
+  }
   credible_interval <- function(x) {
     quantile(x, probs = c(0.025, 0.975))
   }
@@ -379,12 +423,17 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
   index <- which(vv != 0)
 
   # Load CN data
+  if(!av){
   df <- readRDS(cn_name)
   model1 <- df$model
   UVC1 <- model1$UVC
+  UVPM <- model1$UVPM
+  }else{
+    UVC1 <- readRDS(cn_UVC_name)
+    UVPM <- readRDS(cn_UVPM_name)
+  }
   hi.g1 <- t(apply(UVC1, 2, credible_interval))
   rhi.g1 <- hi.g1[index, ]
-  UVPM <- model1$UVPM
   pm <- UVPM[upper.tri(UVPM, diag = FALSE)]
   pm1 <- pm[index]
   order_pm1 <- order(pm1)
@@ -398,12 +447,19 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
   order_neg <- order_pm1[sorted_pm1 < 0] # Define order_neg explicitly
 
   # Load MCI data
+  if(!av){
   df <- readRDS(mci_name)
   model1 <- df$model
   UVC1 <- model1$UVC[4500:7500, ]
+  UVPM <- model1$UVPM
+  }else{
+    UV <- readRDS(mci_UVC_name)
+    if(group == 'f') UVC1 <- UV[4500:5500, ]
+    else UVC1 <- UV
+    UVPM <- readRDS(mci_UVPM_name)
+  }
   hi.g5 <- t(apply(UVC1, 2, credible_interval))
   rhi.g5 <- hi.g5[index, ]
-  UVPM <- model1$UVPM
   pm <- UVPM[upper.tri(UVPM, diag = FALSE)]
   pm5 <- pm[index]
   sorted_pm5 <- pm5[order_pm1]
@@ -472,7 +528,7 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
 
     axis(side = 2, at = 1:B, labels = order_pos, cex.axis = 0.5, padj = 0.6, las = 2)
     axis(side = 1)
-    legend("bottomright", legend = c("Healthy", "Dementia"), lty = 1, col = colsuse, cex = 1)
+    legend("bottomright", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
   }
 
   pdf(paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/CIs/", group, metric, "CIPos.pdf"), height = 11, width = 7)
@@ -902,51 +958,49 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
   ))
 
   colnames(radar_data) <- Greater_DF$Name # Set column names
-  chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
+  #chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
   # Create Spider Plot
   fname <- paste0(g1, "_", g2, "_spiderplot.pdf")
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
   pdf(file = fname, width = 9)
   step <- ceiling(max_val / 4) # Ensure step is an integer
-
+  # Define colors for colorblind-friendly scheme
   areas <- c(
-    rgb(1, 0, 0, 0.25), # Red fill with transparency
-    rgb(0, 1, 0, 0.25)
-  ) # Green fill with transparency
-
+    rgb(0, 1, 1, 0.25), # Cyan fill with transparency for the larger group
+    rgb(1, 0.5, 0, 0.25) # Orange fill with transparency for the smaller group
+  )
+  
   # Generate correct axis labels
   axis_labels <- seq(0, max_val, by = step) # Generate sequence
   if (tail(axis_labels, 1) != max_val) {
     axis_labels <- c(axis_labels, max_val) # Ensure max_val is explicitly included
   }
-
+  
   # Convert labels to character to prevent automatic formatting issues
   axis_labels <- as.character(axis_labels)
-
+  
+  # Create radar chart
   radarchart(radar_data,
-    axistype = 1,
-    pcol = 2:3,
-    pfcol = areas, # Fill the inner area with colors
-    plwd = 3,
-    title = chart_title,
-    vlcex = 2,
-    cglcol = "gray",
-    cglty = 2,
-    axislabcol = "black",
-    caxislabels = axis_labels # Force correct label sequence
+             axistype = 1,
+             pcol = c("cyan", "orange"), # Outline colors
+             pfcol = areas, # Fill the inner area with colors
+             plwd = 3,
+   #          title = chart_title,
+             vlcex = 2,
+             cglcol = "gray",
+             cglty = 2,
+             axislabcol = "black",
+             caxislabels = axis_labels # Force correct label sequence
   )
-
-
-
-
-
-
-  legend("topright",
-    legend = c("Larger", "Smaller"),
-    bty = "n", pch = 20, col = areas,
-    text.col = "grey25", pt.cex = 2
-  )
+  
+  # Update legend with new colors
+  #legend("topright",
+   #      legend = c("Larger", "Smaller"),
+    #     bty = "n", pch = 20, col = c("cyan", "orange"),
+     #    text.col = "grey25", pt.cex = 2
+  #)
+  
 
 
   dev.off()
@@ -957,8 +1011,10 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 
 
 
-CI_analysis(g1 = "mmci", g2 = "mscd")
-grouplist <- list("fcn", "fmci", "fscd", "mcn", "mmci", "mscd")
+CI_analysis()
+
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd")
 
 for (g1_idx in 1:(length(grouplist) - 1)) {
   for (g2_idx in (g1_idx + 1):length(grouplist)) {
@@ -1020,27 +1076,11 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   # Build a matrix of the Correlation in each model
   # Find the average of each model
   # Save the average as a file
-
-  GetCorr <- function(filename) {
-    data <- readRDS(filename)
-    # Extract the model
-    model1 <- data$model
-    x_test <- data$testX
-    l <- length(x_test)
-    est <- model1$EFlPM
-    est_split <- est[1:l]
-    vec1 <- unlist(x_test)
-    vec2 <- unlist(est_split)
-    correlations <- cor(vec1, vec2)
-    return(correlations)
-  }
-
-
   setwd(location)
-  filename <- paste0("ADNI_OD_", group, "_mean_50000_1000.rdata")
+  file_name <- paste0("ADNI_OD_", group, "_mean_50000_1000.rdata")
 
   # Get a matrix to store the correlations, 1-8 for Dim, 1-10 for each rep
-  corr_matrix <- matrix(0, nrow = 8, ncol = 10)
+  corr_matrix <- matrix(0, nrow = 8, ncol = 15)
 
 
   # for each Dim, we need to find the correlation for each rep
@@ -1050,18 +1090,27 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   for (folder in Dimfolders)
   {
     # for each rep in that folder
-    for (rep in 1:10)
+    for (rep in 1:15)
     {
       # Get the file name
-      filename <- paste0(rep, "/", filename)
+      filename <- paste0(folder,"/Rep-",rep, "/", file_name)
       # Check if the file exists in the folder
       if (file.exists(filename)) {
         # Load the file
-        value <- GetCorr(filename)
+        data <- readRDS(filename)
+        # Extract the model
+        model1 <- data$model
+        x_test <- data$testX
+        l <- length(x_test)
+        est <- model1$EFlPM
+        est_split <- est[1:l]
+        vec1 <- unlist(x_test)
+        vec2 <- unlist(est_split)
+        value <- cor(vec1, vec2)
         # Store the value in the matrix
         corr_matrix[as.numeric(folder), rep] <- value
+      }else warning(paste("File does not exist: ", filename))
       }
-    }
     # average all results, and save as a file
   }
   # Average the matrix for each Dim
@@ -1072,6 +1121,13 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
 
 CI_analysis(av = TRUE)
 
+
+for(g in grouplist){
+  AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/" , group = g)
+  data <- readRDS(paste0("Average_", g, "_Corr.rds"))
+  print(g)
+  print(data)
+}
 
 
 
@@ -1223,3 +1279,30 @@ difference <- function(g1, g2, modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProj
   print(lapply(lobe_results, function(x) x$name))
   print(lapply(lobe_results, function(x) x$regions))
 }
+
+
+
+Heatmap(g1 = 'fcn',g2 = 'fmci', 
+        av = TRUE,
+        modeldir = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore" , 
+        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final", 
+        order = TRUE)
+
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd")
+
+for (g1_idx in 1:(length(grouplist) - 1)) {
+  for (g2_idx in (g1_idx + 1):length(grouplist)) {
+    g1 <- grouplist[g1_idx]
+    g2 <- grouplist[g2_idx]
+    Heatmap(g1 = g1,g2 = g2, 
+            av = TRUE,
+            modeldir = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore" , 
+            outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final", 
+            order = TRUE)
+  }
+}
+
+
+
+

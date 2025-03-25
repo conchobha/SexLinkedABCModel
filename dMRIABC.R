@@ -52,7 +52,7 @@ RunModel <- function(dataname='OD',
 #' @param dataloc defines where the preprocessed data is stored 
   cpath <- getwd()
   start <- Sys.time()
-  set.seed(num)
+	
   setwd(cpath)
   sourceEntireFolder("code_behavior_updated",verbose = FALSE, showWarnings=TRUE)
 
