@@ -128,11 +128,12 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
-  pdf(file = fname, width =8.5) #12 if we are doing full size, 8.5 if side by side 
+   #12 if we are doing full size, 8.5 if side by side 
 
   # Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate.
   if(Flag){
     library(corrplot)
+    pdf(file = fname, width =12)
     
     # Define a matrix of colors based on sign, making 0 white
     col_matrix <- ifelse(abs(m) < 0.05, "white", 
@@ -154,6 +155,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
     
     
   }else {
+    pdf(file = fname, width =8.5)
     corrplot(m,
              method = "color",
              col = colorRampPalette(c("#1F77B4","white", "#FF7F0E"))(200),
@@ -1020,7 +1022,7 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
   for (g2_idx in (g1_idx + 1):length(grouplist)) {
     g1 <- grouplist[g1_idx]
     g2 <- grouplist[g2_idx]
-    CI_analysis(g1 = g1, g2 = g2)
+    Heatmap(g1 = g1, g2 = g2)
   }
 }
 
@@ -1118,6 +1120,8 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
 
   # We also want the SD of the matrix
   sd_corr <- apply(corr_matrix, 1, sd, na.rm = TRUE)
+  
+  
   # Save both of these as a rdata file, to be read later
   saveRDS(sd_corr, paste0(location, "SD_", group, "_Corr.rds"))
   saveRDS(avg_corr, paste0(location, "Average_", group, "_Corr.rds"))
@@ -1125,13 +1129,17 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
 
 CI_analysis(av = TRUE)
 
+grouplist <- list("fcn", "fmci"#, 
+                  #"fscd", "mcn", "mmci", "mscd"
+                  )
 
 for(g in grouplist){
   AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/" , group = g)
   cordata <- readRDS(paste0("Average_", g, "_Corr.rds"))
   sddata <- readRDS(paste0("SD_", g, "_Corr.rds"))
   print(g)
-  print(paste(cordata, " +=", sddata ))
+  print(paste(round(cordata,4), " += ", round(sddata,3)))
+  print("\n")
 }
 
 
@@ -1139,6 +1147,9 @@ for(g in grouplist){
 
 replist <- c(1:10, 42)
 group <- "fcn"
+
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd")
 
 for (g in grouplist) {
   print("---------------------")
@@ -1308,6 +1319,32 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
   }
 }
 
+avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
+{
+  # for each folder, we need to see if the file exists, if it does, save the APM. Once we have them all
+  # We can compute the average and print it 
+  # We should also save both the OG data, and the average as a file 
+  setwd(modelloc)
+  Dimfolders <- list.dirs(modelloc, full.names = FALSE, recursive = FALSE)
+  APM <- list()
+  for (folder in Dimfolders){
+    filename <- paste0(folder,"/ADNI_",metric,"_",g,"_mean_2e+05_1000.rdata")
+    if (file.exists(filename)) {
+      data <- readRDS(filename)
+      model <- data$model
+      apm <- model$APM
+      APM <- append(APM,apm)
+    }
+  }
+  average <- mean(unlist(APM))
+  print(paste("Average APM for", g))
+  print(average)
+  
+  file <- list("APM" = APM, "Average" = average)
+  
+  filename <- paste0("Average_",g,"_APM.rds")
+  saveRDS(file,file=filename)
+}
 
-
+for(g in grouplist) avAPM(g = g)
 

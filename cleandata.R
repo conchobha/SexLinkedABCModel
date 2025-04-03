@@ -62,7 +62,7 @@ savedata<- function(group = 'combined',
                     datametric = 'OD',
                     form = 'mean', 
                     IDLoc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Labels/IDs" ,
-                    dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/SC_quant"
+                    dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/SC_quant",
                     outputloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData/Features" ){ #save data as file, Used for processing raw dMRI data for use in the ABC model
   output <- list()
   setwd(IDLoc)
@@ -177,3 +177,4 @@ remakeAtlas <- function()
   
 }
 
+for(g in grouplist) savedata(group = g, datametric = "meanlength")

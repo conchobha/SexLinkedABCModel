@@ -57,8 +57,8 @@ RunModel <- function(dataname='OD',
   sourceEntireFolder("code_behavior_updated",verbose = FALSE, showWarnings=TRUE)
 
 # Read the data
-  if(dataname == 'meanlength' || dataname == 'numoffibers') features <- paste0(group,"_",dataname,".rds")
-  else features <- paste0(group,"_",dataname,"_",form,".rds")
+  
+  features <- paste0(group,"_",dataname,"_",form,".rds")
   labels <- paste0(group,"label.rds")
   setwd(paste0(dataloc,"/Features"))
   X <-readRDS(features)
