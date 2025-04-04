@@ -1370,8 +1370,8 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
   matrix_data2 <- matrix(unlist(APM2), nrow = length(APM2), byrow = TRUE)
 
   #Calculate the Average APM for each participant
-  RowAv1 <- rowMeans(matrix_data1)
-  RowAv2 <- rowMeans(matrix_data2)
+  RowAv1 <- colMeans(matrix_data1)
+  RowAv2 <- colMeans(matrix_data2)
 
   #do the t-test
   t_test_result <- t.test(RowAv1, RowAv2, paired = TRUE)
