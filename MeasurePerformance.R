@@ -1354,9 +1354,27 @@ for(g in grouplist) avAPM(g = g)
 
 APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
 {
+  #This function will take two groups, pull the APM data from each group, and then run a paired t-test on them.
+
+  g1name <- paste0('Average',g1,"_APM.rds")
+  g2name <- paste0('Average',g2,"_APM.rds")
+  setwd(loc)
+  data1 <- readRDS(g1name)
+  data2 <- readRDS(g2name)
   
-  
-  
-  
+  APM1 <- data1$APM
+  APM2 <- data2$APM
+
+  # Convert the APM data to a matrix
+  matrix_data1 <- matrix(unlist(APM1), nrow = length(APM1), byrow = TRUE)
+  matrix_data2 <- matrix(unlist(APM2), nrow = length(APM2), byrow = TRUE)
+
+  #Calculate the Average APM for each participant
+  RowAv1 <- rowMeans(matrix_data1)
+  RowAv2 <- rowMeans(matrix_data2)
+
+  #do the t-test
+  t_test_result <- t.test(RowAv1, RowAv2, paired = TRUE)
+  print(t_test_result)  
 }
 
