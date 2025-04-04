@@ -1013,18 +1013,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 
 
 
-CI_analysis()
 
-grouplist <- list("fcn", "fmci", 
-                  "fscd", "mcn", "mmci", "mscd")
-
-for (g1_idx in 1:(length(grouplist) - 1)) {
-  for (g2_idx in (g1_idx + 1):length(grouplist)) {
-    g1 <- grouplist[g1_idx]
-    g2 <- grouplist[g2_idx]
-    Heatmap(g1 = g1, g2 = g2)
-  }
-}
 
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
@@ -1356,8 +1345,8 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
 {
   #This function will take two groups, pull the APM data from each group, and then run a paired t-test on them.
 
-  g1name <- paste0('Average',g1,"_APM.rds")
-  g2name <- paste0('Average',g2,"_APM.rds")
+  g1name <- paste0('Average_',g1,"_APM.rds")
+  g2name <- paste0('Average_',g2,"_APM.rds")
   setwd(loc)
   data1 <- readRDS(g1name)
   data2 <- readRDS(g2name)
@@ -1375,6 +1364,19 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
 
   #do the t-test
   t_test_result <- t.test(RowAv1, RowAv2, paired = TRUE)
+  print(paste("For ", g1, " vs ", g2))
   print(t_test_result)  
+}
+
+
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd")
+
+for (g1_idx in 1:(length(grouplist) - 1)) {
+  for (g2_idx in (g1_idx + 1):length(grouplist)) {
+    g1 <- grouplist[g1_idx]
+    g2 <- grouplist[g2_idx]
+    APMTesting(g1 = g1, g2 = g2)
+  }
 }
 
