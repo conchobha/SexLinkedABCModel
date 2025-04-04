@@ -20,7 +20,7 @@ if (gr != 7){
     flag <- TRUE
     }# 6 groups
 DM <- as.numeric(args[2])
-rep <- as.numeric(args[3])
+rep <- as.numeric(args[3])+10
 # Pull Which dim we are using 
 #for OD
 #dm 1 for FCN, 2 for others 

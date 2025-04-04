@@ -1333,10 +1333,13 @@ avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedPro
       data <- readRDS(filename)
       model <- data$model
       apm <- model$APM
-      APM <- append(APM,apm)
+      APM[[folder]] <- apm 
     }
   }
-  average <- mean(unlist(APM))
+  #Convert to a matrix
+  matrix_data <- matrix(unlist(APM), nrow = length(APM), byrow = TRUE)
+  RowAv <- rowMeans(matrix_data)
+  average <- mean(RowAv)
   print(paste("Average APM for", g))
   print(average)
   
@@ -1347,4 +1350,13 @@ avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedPro
 }
 
 for(g in grouplist) avAPM(g = g)
+
+
+APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
+{
+  
+  
+  
+  
+}
 
