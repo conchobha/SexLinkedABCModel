@@ -6,7 +6,9 @@ library(readr) # Used for reading CSV file faster than the built in r function
 library(dplyr) # used for selecting collums in the read functions
 library(caTools) #Used for splitting data 
 # Source Entire Folder function***
-sourceEntireFolder <- function(folderName, verbose=FALSE, showWarnings=TRUE) { # Takes in Name, Verbosity, and Warnings. Sources all files within a folder, one of which being the abc.R file
+sourceEntireFolder <- function(folderName, verbose=FALSE, showWarnings=TRUE) { 
+  # Takes in Name, Verbosity, and Warnings. Sources all files within a folder, one of which being the abc.R file. 
+  #Frankly we only need to source the needed, but the model works so why change it
   files <- list.files(folderName, full.names=TRUE) # Lists all files within the folder
   files <- files[ grepl("\\.[rR]$", files) ]# Grab only R files 
   if (!length(files) && showWarnings) # Activates if there are no R files in the specified folder 
@@ -16,10 +18,14 @@ sourceEntireFolder <- function(folderName, verbose=FALSE, showWarnings=TRUE) { #
     if (verbose) 
       cat("sourcing: ", f, "\n") 
     ## TODO:  add caught whether error or not and return that
-    try(source(f, local=FALSE, echo=FALSE), silent=!verbose) # Attempts to Read and execute all R files in the folder, giving us those variables that exist  
+    try(source(f, local=FALSE, echo=FALSE), silent=!verbose) 
+    # Attempts to Read and execute all R files in the folder, giving us those variables that exist  
   }
   return(invisible(NULL))
 }
+
+
+
 replace_nan_with_NA <- function(list_of_matrices) { #Model needs NA values instead of nan in which our dataset gives, this fixes the data
   lapply(list_of_matrices, function(matrix) {
     # Convert the matrix to numeric, which will turn any non-numeric values to NA (including 'NaN' strings)
@@ -35,7 +41,7 @@ replace_nan_with_NA <- function(list_of_matrices) { #Model needs NA values inste
   })
 }
 RunModel <- function(dataname='OD',
-                     dn=2,sn,fn=100,num=42,burns=1000,
+                     dn=1,sn,fn=100,num=42,burns=1000,
                      group='combined',form='mean', 
                      outputDIR="/N/u/conlcorn/BigRed200/SexLinkedProject/output",
                      dataloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/processedData")
@@ -53,11 +59,11 @@ RunModel <- function(dataname='OD',
   cpath <- getwd()
   start <- Sys.time()
 	
-  setwd(cpath)
-  sourceEntireFolder("code_behavior_updated",verbose = FALSE, showWarnings=TRUE)
+  setwd(cpath) # Set the working directory to the location of the script
+  sourceEntireFolder("code_behavior_updated",verbose = FALSE, showWarnings=TRUE) # Source the entire folder containing the functions
+  # This is where the ABC function is located
 
-# Read the data
-  
+#Read the data 
   features <- paste0(group,"_",dataname,"_",form,".rds")
   labels <- paste0(group,"label.rds")
   setwd(paste0(dataloc,"/Features"))
@@ -65,7 +71,7 @@ RunModel <- function(dataname='OD',
   X_list <- X[[1]]
   setwd(paste0(dataloc,"/Labels"))
   labeldata <- readRDS(labels) #Pull the 
-# Normalize the X
+# We need to clean the data, as the model does not like NaN values
   labeldata_cleaned <- replace_nan_with_NA(labeldata)
   rm(X,labeldata) # Cleaning variables no longer needed
 # Split for training and Testing sets 
@@ -97,7 +103,7 @@ RunModel <- function(dataname='OD',
          ,'testX' = X_test,'testY' = Y_test, 'Comptime' = as.numeric(difftime(end,start,units = "secs"))
          #,"validation.id"=validation.id, "test.id"=test.id,"train.id"=train.id #-> Removed for now, will return later 
          )
-  if (!dir.exists(outputDIR)) dir.create(outputDIR,recursive = TRUE)
+  if (!dir.exists(outputDIR)) dir.create(outputDIR,recursive = TRUE) #should have been made before running the script, but just to be sure
   setwd(outputDIR)  # When running, we want to change this to a DIR we can access
   saveRDS(res,paste0("ADNI_",dataname,"_",group,"_",form,"_",sn,"_",burns,".rdata")) # Saves the Model as an R Object in the Above DIR
 }
