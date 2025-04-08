@@ -1013,18 +1013,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 
 
 
-CI_analysis()
 
-grouplist <- list("fcn", "fmci", 
-                  "fscd", "mcn", "mmci", "mscd")
-
-for (g1_idx in 1:(length(grouplist) - 1)) {
-  for (g2_idx in (g1_idx + 1):length(grouplist)) {
-    g1 <- grouplist[g1_idx]
-    g2 <- grouplist[g2_idx]
-    Heatmap(g1 = g1, g2 = g2)
-  }
-}
 
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
@@ -1073,13 +1062,13 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   }
 }
 
-AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn") {
+AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn",metric = 'OD') {
   # Plan:
   # Build a matrix of the Correlation in each model
   # Find the average of each model
   # Save the average as a file
   setwd(location)
-  file_name <- paste0("ADNI_OD_", group, "_mean_50000_1000.rdata")
+  file_name <- paste0("ADNI_",metric,"_", group, "_mean_50000_1000.rdata")
 
   # Get a matrix to store the correlations, 1-8 for Dim, 1-10 for each rep
   corr_matrix <- matrix(0, nrow = 8, ncol = 15)
@@ -1123,8 +1112,8 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   
   
   # Save both of these as a rdata file, to be read later
-  saveRDS(sd_corr, paste0(location, "SD_", group, "_Corr.rds"))
-  saveRDS(avg_corr, paste0(location, "Average_", group, "_Corr.rds"))
+  saveRDS(sd_corr, paste0(location, "SD_", group, "_",metric,"_Corr.rds"))
+  saveRDS(avg_corr, paste0(location, "Average_", group, "_",metric,"_Corr.rds"))
 }
 
 CI_analysis(av = TRUE)
@@ -1134,7 +1123,7 @@ grouplist <- list("fcn", "fmci"#,
                   )
 
 for(g in grouplist){
-  AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/" , group = g)
+  AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/meanlength" , group = g,metric = 'meanlength')
   cordata <- readRDS(paste0("Average_", g, "_Corr.rds"))
   sddata <- readRDS(paste0("SD_", g, "_Corr.rds"))
   print(g)
@@ -1332,20 +1321,20 @@ avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedPro
     if (file.exists(filename)) {
       data <- readRDS(filename)
       model <- data$model
-      apm <- model$APM
+      apm <- model$BPM
       APM[[folder]] <- apm 
     }
   }
   #Convert to a matrix
   matrix_data <- matrix(unlist(APM), nrow = length(APM), byrow = TRUE)
-  RowAv <- rowMeans(matrix_data)
+  RowAv <- colMeans(matrix_data)
   average <- mean(RowAv)
   print(paste("Average APM for", g))
   print(average)
   
-  file <- list("APM" = APM, "Average" = average)
+  file <- list("BPM" = APM, "Average" = average)
   
-  filename <- paste0("Average_",g,"_APM.rds")
+  filename <- paste0("Average_",g,"_BPM.rds")
   saveRDS(file,file=filename)
 }
 
@@ -1356,8 +1345,8 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
 {
   #This function will take two groups, pull the APM data from each group, and then run a paired t-test on them.
 
-  g1name <- paste0('Average',g1,"_APM.rds")
-  g2name <- paste0('Average',g2,"_APM.rds")
+  g1name <- paste0('Average_',g1,"_APM.rds")
+  g2name <- paste0('Average_',g2,"_APM.rds")
   setwd(loc)
   data1 <- readRDS(g1name)
   data2 <- readRDS(g2name)
@@ -1375,6 +1364,19 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
 
   #do the t-test
   t_test_result <- t.test(RowAv1, RowAv2, paired = TRUE)
+  print(paste("For ", g1, " vs ", g2))
   print(t_test_result)  
+}
+
+
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd")
+
+for (g1_idx in 1:(length(grouplist) - 1)) {
+  for (g2_idx in (g1_idx + 1):length(grouplist)) {
+    g1 <- grouplist[g1_idx]
+    g2 <- grouplist[g2_idx]
+    APMTesting(g1 = g1, g2 = g2)
+  }
 }
 
