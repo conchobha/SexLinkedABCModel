@@ -10,11 +10,19 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
                     modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                     outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/",
                     order = TRUE) {
+  #@param g1: The first group to be used in the heatmap
+  #@param g2: The second group to be used in the heatmap, if NA, it will only use g1
+  #@param av: If true, it will use the average data, if false, it will use the raw data from a model output
+  #@param modeldir: The directory where the model outputs are stored. If using av, point it to where the average data is stored
+  #@param outputdir: The directory where the heatmap will be saved\
+  #@param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap
+
+
   # A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given
   # If a second group is given, it will give the difference between the two groups
   library(corrplot)
-  Flag <- FALSE
-  reorder <- function(matrix_to_reorder) {
+  Flag <- FALSE # Flag to determine if we are doing a comparison map or not
+  reorder <- function(matrix_to_reorder) { #function to reorder the matrix based on a given atlas
     # Load the required data
     load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
 
@@ -31,7 +39,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
     return(reordered_mat)
   }
 
-  add_RSN_borders <- function() {
+  add_RSN_borders <- function() { #function to add the borders to the heatmap if we are ordering
     load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
     unique_groups <- unique(final_df[order(final_df$LOBE), ])
     group <- unique(unique_groups$LOBE)
@@ -92,8 +100,8 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   }
 
   setwd(modeldir)
-  o <- outputdir
-  if (av) {
+  o <- outputdir 
+  if (av) { 
     # load the data for g1
     g1name <- paste0("Average_", g1, "_UVPM.rds")
     g1data <- readRDS(g1name)
@@ -129,8 +137,6 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
    #12 if we are doing full size, 8.5 if side by side 
-
-  # Needs to be update eventually to be tracked via the regions. I have the .py code for that, need to integrate.
   if(Flag){
     library(corrplot)
     pdf(file = fname, width =12)
