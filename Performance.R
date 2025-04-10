@@ -193,6 +193,21 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
 #'  there are folders for each replication ('Rep-1', 'Rep-2', for example)
 #' Inside each of those folders, 
 #'  there are files named ADNI_[metric]_[GROUP]_mean_50000_1000.rdata, etc.
+  getCorr <- function(filename)
+  {
+        data <- readRDS(filename)
+        # Extract the model
+        model1 <- data$model
+        x_test <- data$testX
+        l <- length(x_test)
+        est <- model1$EFlPM
+        est_split <- est[1:l]
+        vec1 <- unlist(x_test)
+        vec2 <- unlist(est_split)
+        value <- cor(vec1, vec2)
+        return(value)
+  }
+  
   setwd(location)
   file_name <- paste0("ADNI_",metric,"_", group, "_mean_50000_1000.rdata")
 
@@ -215,16 +230,7 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
       # Check if the file exists in the folder
       if (file.exists(filename)) {
         # Load the file
-        data <- readRDS(filename)
-        # Extract the model
-        model1 <- data$model
-        x_test <- data$testX
-        l <- length(x_test)
-        est <- model1$EFlPM
-        est_split <- est[1:l]
-        vec1 <- unlist(x_test)
-        vec2 <- unlist(est_split)
-        value <- cor(vec1, vec2)
+        value <- getCorr(filename)
         # Store the value in the matrix
         corr_matrix[as.numeric(folder), temp] <- value
       }else warning(paste("File does not exist: ", filename))
