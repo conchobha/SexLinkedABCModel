@@ -199,7 +199,7 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   file_name <- paste0("ADNI_",metric,"_", group, "_mean_50000_1000.rdata")
 
   # Get a matrix to store the correlations, 1-8 for Dim, 1-10 for each rep
-  corr_matrix <- matrix(0, nrow = 8, ncol = 15)
+  corr_matrix <- matrix(0, nrow = 8, ncol = 10)
 
 
   # for each Dim, we need to find the correlation for each rep
@@ -229,9 +229,10 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
         # Store the value in the matrix
         corr_matrix[as.numeric(folder), temp] <- value
       }else warning(paste("File does not exist: ", filename))
-      }
+      
         temp <- temp + 1
-  }
+    }
+        }
   # Average the matrix for each Dim
   avg_corr <- rowMeans(corr_matrix, na.rm = TRUE)
 
