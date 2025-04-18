@@ -91,7 +91,7 @@ RunModel <- function(dataname='OD',
   Y_test <- labeldata_cleaned[test_indices]
 
 # Run ABC Model
-  md=abc(X=X_train, Y=Y_train,W=NULL, H=NULL, K=2,
+  md=abc(X=X_train, Y=Y_train,W=NULL, H=NULL, K=dn,
        indices = NULL, indices_irt = NULL,
        seed = num, nscan = sn, burn = burns,odens = 10,
        print = TRUE, gof=FALSE, plot=FALSE,
@@ -101,7 +101,6 @@ RunModel <- function(dataname='OD',
 # Return Model as file for future validation
   res=list("model"=md,"dn"=dn,"sn"=sn, "fn"=fn,"num"=num 
          ,'testX' = X_test,'testY' = Y_test, 'Comptime' = as.numeric(difftime(end,start,units = "secs"))
-         #,"validation.id"=validation.id, "test.id"=test.id,"train.id"=train.id #-> Removed for now, will return later 
          )
   if (!dir.exists(outputDIR)) dir.create(outputDIR,recursive = TRUE) #should have been made before running the script, but just to be sure
   setwd(outputDIR)  # When running, we want to change this to a DIR we can access

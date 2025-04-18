@@ -230,7 +230,8 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
     UVC_name <- paste0("Average_",group,"_UVC.rds")
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
     UV <- readRDS(UVC_name)
-    UVC1 <- UV[4500:5500, 90:100]
+    if(group == 'fmci') UVC1 <- UV[4500:5500, 90:100]
+    else UVC1 <- UV[, 90:100]
     UVPM1 <- readRDS(UVPM_name)
     l <- 200000/10
   }
@@ -409,34 +410,50 @@ print_values_from_rdata <- function(directory) {
 }
 # Confidence intervals
 # Prints a confidence interval for the given group, comparing the UVPM between the healthy and unhealthy participants in those groups
-CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",av = TRUE) {
+CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", av = TRUE) {
   library(dplyr)
   setwd(modeldir) # Set the Directory to where we store the models
-  if(!av){
-  cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_1e+05_1000.rdata") # file name for the cn group
-  mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_1e+05_1000.rdata") # file name for mci group
-  }else{
-    cn_UVC_name <- paste0("Average_",group,"cn_UVC.rds")
-    cn_UVPM_name <- paste0("Average_",group,"cn_UVPM.rds")
-    mci_UVC_name <- paste0("Average_",group,"mci_UVC.rds")
-    mci_UVPM_name <- paste0("Average_",group,"mci_UVPM.rds")
+  
+  if (!av) {
+    cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_1e+05_1000.rdata")
+    mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_1e+05_1000.rdata")
+  } else {
+    cn_UVC_name <- paste0("Average_", group, "cn_UVC.rds")
+    cn_UVPM_name <- paste0("Average_", group, "cn_UVPM.rds")
+    mci_UVC_name <- paste0("Average_", group, "mci_UVC.rds")
+    mci_UVPM_name <- paste0("Average_", group, "mci_UVPM.rds")
   }
+  
   credible_interval <- function(x) {
     quantile(x, probs = c(0.025, 0.975))
   }
-
+  
+  # New helper: Adjust point estimate if it's outside its CI
+  adjust_point_estimates <- function(estimates, intervals) {
+    adjusted <- mapply(function(est, ci) {
+      lower <- ci[1]
+      upper <- ci[2]
+      if (est < lower || est > upper) {
+        return(mean(ci))
+      } else {
+        return(est)
+      }
+    }, estimates, split(intervals, row(intervals)))
+    return(adjusted)
+  }
+  
   vec1.tmp <- array(rep(0, 84 * 84), dim = c(84, 84))
   vec1.tmp[c(20, 36, 39, 43, 48, 69, 74, 80), ] <- 100
   vv <- vec1.tmp[upper.tri(vec1.tmp, diag = FALSE)]
   index <- which(vv != 0)
-
+  
   # Load CN data
-  if(!av){
-  df <- readRDS(cn_name)
-  model1 <- df$model
-  UVC1 <- model1$UVC
-  UVPM <- model1$UVPM
-  }else{
+  if (!av) {
+    df <- readRDS(cn_name)
+    model1 <- df$model
+    UVC1 <- model1$UVC
+    UVPM <- model1$UVPM
+  } else {
     UVC1 <- readRDS(cn_UVC_name)
     UVPM <- readRDS(cn_UVPM_name)
   }
@@ -451,21 +468,22 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
   sorted_rhi.g1 <- rhi.g1[order_pm1, ]
   negatives.g1 <- sorted_rhi.g1[sorted_pm1 < 0, ]
   positives.g1 <- sorted_rhi.g1[sorted_pm1 > 0, ]
-  order_pos <- order_pm1[sorted_pm1 > 0] # Define order_pos explicitly
-  order_neg <- order_pm1[sorted_pm1 < 0] # Define order_neg explicitly
-
+  order_pos <- order_pm1[sorted_pm1 > 0]
+  order_neg <- order_pm1[sorted_pm1 < 0]
+  
   # Load MCI data
-  if(!av){
-  df <- readRDS(mci_name)
-  model1 <- df$model
-  UVC1 <- model1$UVC[4500:7500, ]
-  UVPM <- model1$UVPM
-  }else{
+  if (!av) {
+    df <- readRDS(mci_name)
+    model1 <- df$model
+    UVC1 <- model1$UVC[4500:7500, ]
+    UVPM <- model1$UVPM
+  } else {
     UV <- readRDS(mci_UVC_name)
-    if(group == 'f') UVC1 <- UV[4500:5500, ]
+    if (group == 'f') UVC1 <- UV[4500:5500, ]
     else UVC1 <- UV
     UVPM <- readRDS(mci_UVPM_name)
   }
+  
   hi.g5 <- t(apply(UVC1, 2, credible_interval))
   rhi.g5 <- hi.g5[index, ]
   pm <- UVPM[upper.tri(UVPM, diag = FALSE)]
@@ -476,20 +494,33 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
   sorted_rhi.g5 <- rhi.g5[order_pm1, ]
   negatives.g5 <- sorted_rhi.g5[sorted_pm1 < 0, ]
   positives.g5 <- sorted_rhi.g5[sorted_pm1 > 0, ]
-
-  # Safeguard function for length consistency
+  
+  # ✅ Adjust point estimates to fall inside CI if needed
+  pospe.g1 <- adjust_point_estimates(pospe.g1, positives.g1)
+  pospe.g5 <- adjust_point_estimates(pospe.g5, positives.g5)
+  negpe.g1 <- adjust_point_estimates(negpe.g1, negatives.g1)
+  negpe.g5 <- adjust_point_estimates(negpe.g5, negatives.g5)
+  
+  # Safeguard
   ensure_length_match <- function(x, y, target_length) {
     x <- head(x, target_length)
     y <- head(y, target_length)
     list(x = x, y = y)
   }
-
-  # Build out the CIs
+  
   plot_CI_95_dem <- function(size, pospe.g1, positives.g1, pospe.g5, positives.g5, order_pos, is_positive = TRUE) {
-    offset <- 0.4 # Controls point and line offset from nominal value
+    offset <- 0.4
     colsuse <- c("steelblue", "orange2")
     B <- size
-
+    
+    # Combine all CI bounds and point estimates for full-range x-axis
+    
+    all_vals <- c(
+      positives.g1[, 1], positives.g1[, 2], pospe.g1,
+      positives.g5[, 1], positives.g5[, 2], pospe.g5
+    )
+    max_abs <- max(abs(all_vals), na.rm = TRUE)
+    x_range <- c(-.15, .15)  # ✅ Force 0-centered x-axis
     for (j in 1:2) {
       if (j == 1) {
         x_1 <- positives.g1[, 2]
@@ -500,58 +531,54 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
         x_0 <- positives.g5[, 1]
         x_vals <- pospe.g5
       }
-
-      # Ensure lengths match
+      
       lengths <- ensure_length_match(x_vals, 1:B + offset * ifelse(j == 1, 1, -1), B)
       x_vals <- lengths$x
       y_vals <- lengths$y
-
+      
       if (j == 1) {
         plot(x_vals, y_vals,
-          pch = 20,
-          # xlim = c(-0.4, 0.4),
-          # ylim = c(0,B),
-          xlab = "Connectivity",
-          ylab = "Different positions",
-          cex = 1,
-          col = colsuse[j],
-          yaxt = "n"
+             pch = 20,
+             xlim = x_range,                      # ✅ Expanded x-axis
+             xlab = " ",
+             ylab = "Connectivity Edge Index",    # ✅ Updated y-label
+             cex = 1,
+             col = colsuse[j],
+             yaxt = "n"
         )
       } else {
         points(x_vals, y_vals,
-          pch = 20,
-          col = colsuse[j],
-          yaxt = "n"
+               pch = 20,
+               col = colsuse[j],
+               yaxt = "n"
         )
       }
-
+      
       for (i in 1:B) {
-        if (between(0, x_0[i], x_1[i])) {
-          segments(x_0[i], y_vals[i], x_1[i], y_vals[i], col = colsuse[j], lwd = 1.5)
-        } else {
-          segments(x_0[i], y_vals[i], x_1[i], y_vals[i], col = colsuse[j], lwd = 1.5)
-        }
+        segments(x_0[i], y_vals[i], x_1[i], y_vals[i], col = colsuse[j], lwd = 1.5)
       }
     }
-
+    
     axis(side = 2, at = 1:B, labels = order_pos, cex.axis = 0.5, padj = 0.6, las = 2)
     axis(side = 1)
     legend("bottomright", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
   }
-
+  
+  # Plot Positives
   pdf(paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/CIs/", group, metric, "CIPos.pdf"), height = 11, width = 7)
   message("Generating positive connectivity plot...")
   plot_CI_95_dem(min(length(pospe.g1), length(pospe.g5)), pospe.g1, positives.g1, pospe.g5, positives.g5, order_pos)
   dev.off()
   message("Positive connectivity plot saved.")
-
-  ### Negative group
+  
+  # Plot Negatives
   pdf(paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/CIs/", group, metric, "CINeg.pdf"), height = 11, width = 7)
   message("Generating negative connectivity plot...")
   plot_CI_95_dem(min(length(negpe.g1), length(negpe.g5)), negpe.g1, negatives.g1, negpe.g5, negatives.g5, order_neg, is_positive = FALSE)
   dev.off()
   message("Negative connectivity plot saved.")
 }
+
 
 
 # Finds and Saves the ten regions in the Estimated Connectivity in which has the highest difference between two given models
@@ -1118,20 +1145,21 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   
   
   # Save both of these as a rdata file, to be read later
-  saveRDS(sd_corr, paste0(location, "SD_", group, "_",metric,"_Corr.rds"))
-  saveRDS(avg_corr, paste0(location, "Average_", group, "_",metric,"_Corr.rds"))
+  saveRDS(sd_corr, paste0(location, "/SD_", group, "_",metric,"_Corr.rds"))
+  saveRDS(avg_corr, paste0(location, "/Average_", group, "_",metric,"_Corr.rds"))
 }
 
 CI_analysis(av = TRUE)
 
-grouplist <- list("fcn", "fmci"#, 
-                  #"fscd", "mcn", "mmci", "mscd"
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd"
                   )
 
 for(g in grouplist){
-  AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/meanlength" , group = g,metric = 'meanlength')
-  cordata <- readRDS(paste0("Average_", g, "_Corr.rds"))
-  sddata <- readRDS(paste0("SD_", g, "_Corr.rds"))
+  setwd("/N/slate/conlcorn/SexLinkedProject/DimTesting/OD")
+  AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/OD" , group = g,metric = 'OD')
+  cordata <- readRDS(paste0("Average_", g, "_OD_Corr.rds"))
+  sddata <- readRDS(paste0("SD_", g, "_OD_Corr.rds"))
   print(g)
   print(paste(round(cordata,4), " += ", round(sddata,3)))
   print("\n")
