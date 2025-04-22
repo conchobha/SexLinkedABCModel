@@ -231,7 +231,8 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
     UV <- readRDS(UVC_name)
     if(group == 'fmci') UVC1 <- UV[4500:5500, 90:100]
-    else UVC1 <- UV[, 90:100]
+    else 
+    UVC1 <- UV[, 90:100]
     UVPM1 <- readRDS(UVPM_name)
     l <- 200000/10
   }
@@ -475,7 +476,8 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
   if (!av) {
     df <- readRDS(mci_name)
     model1 <- df$model
-    UVC1 <- model1$UVC[4500:7500, ]
+    if(group == 'f') UVC1 <- model1$UVC[4500:7500, ]
+    else UVC1 <- model1$UVC
     UVPM <- model1$UVPM
   } else {
     UV <- readRDS(mci_UVC_name)
@@ -520,7 +522,8 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
       positives.g5[, 1], positives.g5[, 2], pospe.g5
     )
     max_abs <- max(abs(all_vals), na.rm = TRUE)
-    x_range <- c(-.15, .15)  # ✅ Force 0-centered x-axis
+    min_abs <- min(abs(all_vals), na.rm = TRUE)
+    x_range <- range(all_vals, na.rm = TRUE)
     for (j in 1:2) {
       if (j == 1) {
         x_1 <- positives.g1[, 2]
@@ -561,7 +564,7 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
     
     axis(side = 2, at = 1:B, labels = order_pos, cex.axis = 0.5, padj = 0.6, las = 2)
     axis(side = 1)
-    legend("bottomright", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
+    legend("bottomleft", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
   }
   
   # Plot Positives
@@ -870,7 +873,8 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
     model1name <- paste0("Average_", g1, "_UVC.rds")
     model2name <- paste0("Average_", g2, "_UVC.rds")
     UVC1 <- readRDS(model1name)
-    UVC2 <- readRDS(model2name)
+    UVCg <- readRDS(model2name)
+    UVC2 <- UVCg[4500:5500,]
   } else {
     setwd(modelloc)
     model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
@@ -1095,6 +1099,12 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   }
 }
 
+MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVPM',group = 'fcn')
+MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVC',group = 'fcn')
+MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVPM',group = 'fscd')
+MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVC',group = 'fscd')
+
+
 AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn",metric = 'OD') {
   # Plan:
   # Build a matrix of the Correlation in each model
@@ -1157,18 +1167,19 @@ grouplist <- list("fcn", "fmci",
 
 for(g in grouplist){
   setwd("/N/slate/conlcorn/SexLinkedProject/DimTesting/OD")
-  AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/OD" , group = g,metric = 'OD')
+  #AverageCorr(location ="/N/slate/conlcorn/SexLinkedProject/DimTesting/OD" , group = g,metric = 'OD')
   cordata <- readRDS(paste0("Average_", g, "_OD_Corr.rds"))
   sddata <- readRDS(paste0("SD_", g, "_OD_Corr.rds"))
   print(g)
-  print(paste(round(cordata,4), " += ", round(sddata,3)))
+  cat(paste(round(cordata, 4), " \\pm ", round(sddata, 3)))
+  
   print("\n")
 }
 
 
 
 
-replist <- c(1:10, 42)
+replist <- c(1:10)
 group <- "fcn"
 
 grouplist <- list("fcn", "fmci", 
@@ -1180,9 +1191,9 @@ for (g in grouplist) {
   print("---------------------")
   for (r in replist) {
     # set wd to the head folder
-    setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD")
+    setwd("/N/slate/conlcorn/SexLinkedProject/FinalModels/OD")
     # build the folder and file name
-    modelloc <- paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/Rep-", r)
+    modelloc <- paste0("/N/slate/conlcorn/SexLinkedProject/FinalModels/OD/Rep-", r)
     filename <- paste0("ADNI_OD_", g, "_mean_2e+05_1000.rdata")
     # call the correlation function
     Correlation(modelname = filename, modelloc = modelloc, rep = r)
@@ -1342,7 +1353,7 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
   }
 }
 
-avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
+avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedProject/FinalModels/OD")
 {
   # for each folder, we need to see if the file exists, if it does, save the APM. Once we have them all
   # We can compute the average and print it 
@@ -1355,7 +1366,7 @@ avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedPro
     if (file.exists(filename)) {
       data <- readRDS(filename)
       model <- data$model
-      apm <- model$BPM
+      apm <- model$APM
       APM[[folder]] <- apm 
     }
   }
@@ -1366,9 +1377,9 @@ avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedPro
   print(paste("Average APM for", g))
   print(average)
   
-  file <- list("BPM" = APM, "Average" = average)
+  file <- list("APM" = APM, "Average" = average)
   
-  filename <- paste0("Average_",g,"_BPM.rds")
+  filename <- paste0("Average_",g,"_APM.rds")
   saveRDS(file,file=filename)
 }
 

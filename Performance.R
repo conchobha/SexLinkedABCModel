@@ -21,6 +21,25 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   #' @description A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given. If a second group is given, it will give the difference between the two groups
   library(corrplot)
   Flag <- FALSE # Flag to determine if we are doing a comparison map or not
+  
+  center_matrix <- function(mat) {
+    # Calculate the overall mean of all elements
+    mat_mean <- mean(mat)
+    
+    # If the mean is already zero, return the matrix unchanged
+    if (mat_mean == 0) {
+      print("Mean is 0")
+      return(mat)
+    }
+    
+    # Subtract the mean from all elements to center the matrix
+    centered_mat <- mat - mat_mean
+    print("Mean is not equal to 0, scaling matrix")
+    return(centered_mat)
+  }
+  
+  
+  
   reorder <- function(matrix_to_reorder) { #function to reorder the matrix based on a given atlas
     # Load the required data
     load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
@@ -110,6 +129,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
     data <- readRDS(g1name)
     model <- data$model
     g1data <- model$UVPM
+    
   }
   fname <- paste0(g1, "_heatmap2.pdf")
   if (!is.na(g2)) {
@@ -123,6 +143,8 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
       model <- data$model
       g2data <- model$UVPM
     }
+    print("The Average for g2 is: ")
+    
     Flag <- TRUE
     fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
     matrix_data <- g1data - g2data
@@ -132,6 +154,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   if (order) m <- reorder(matrix_data)
   else m <- matrix_data
   
+  center_matrix(m)
 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
@@ -168,10 +191,9 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
              # addgrid.col = "white",
              cl.pos = "b",
              is.corr = FALSE,
-             col.lim = c(-0.2,.305),
+             col.lim = c(-0.2,.28),
              cl.cex = 1.25
     )
-    
     }
   
   
@@ -243,5 +265,35 @@ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   # Save both of these as a rdata file, to be read later
   saveRDS(sd_corr, paste0(location, "/SD_", group, "_",metric,"_Corr.rds"))
   saveRDS(avg_corr, paste0(location, "/Average_", group, "_",metric,"_Corr.rds"))
+}
+
+AverageAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedProject/FinalModels/OD")
+{
+  # for each folder, we need to see if the file exists, if it does, save the APM. Once we have them all
+  # We can compute the average and print it 
+  # We should also save both the OG data, and the average as a file 
+  setwd(modelloc)
+  Dimfolders <- list.dirs(modelloc, full.names = FALSE, recursive = FALSE)
+  APM <- list()
+  for (folder in Dimfolders){
+    filename <- paste0(folder,"/ADNI_",metric,"_",g,"_mean_2e+05_1000.rdata")
+    if (file.exists(filename)) {
+      data <- readRDS(filename)
+      model <- data$model
+      apm <- model$APM
+      APM[[folder]] <- apm 
+    }
+  }
+  #Convert to a matrix
+  matrix_data <- matrix(unlist(APM), nrow = length(APM), byrow = TRUE)
+  RowAv <- colMeans(matrix_data)
+  average <- mean(RowAv)
+  print(paste("Average APM for", g))
+  print(average)
+  
+  file <- list("APM" = APM, "Average" = average)
+  
+  filename <- paste0("Average_",g,"_APM.rds")
+  saveRDS(file,file=filename)
 }
 

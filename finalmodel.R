@@ -6,7 +6,7 @@ source("dMRIABC.R") # Source our model script
 #Set up The variables
 fn <- 100
 burns <- 1000 #how many itterations to burn
-itterations <- 50000 #how many itterations to run
+itterations <- 200000 #how many itterations to run
 grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd') # Define the list of our groups
 
 args = commandArgs(trailingOnly = TRUE) #pull the arguments from the command line call
@@ -15,14 +15,14 @@ gr <- as.numeric(args[1]) #Define which group we are using out of the six total
 group <- grouplist[gr]
 
 
-DM <- as.numeric(args[2]) #Define which dim we are using out of the 1-8
-rep <- as.numeric(args[3]) #Define which replication we doing. Impacts both seed and output location
+#DM <- as.numeric(args[2]) #Define which dim we are using out of the 1-8
+rep <- as.numeric(args[2]) #Define which replication we doing. Impacts both seed and output location
 
-
+DM <- 1
 
 Metric <- 'OD' 
 
-output_loc <- paste0("/N/slate/conlcorn/SexLinkedProject/DimTesting/",Metric,"/",DM,"/Rep-",rep,"/") #make sure to make this directory before running the script to avoid errors
+output_loc <- paste0("/N/slate/conlcorn/SexLinkedProject/FinalModels_MoreDim/",Metric,"/Rep-",rep,"/") #make sure to make this directory before running the script to avoid errors
 if (!dir.exists(output_loc)) dir.create(output_loc,recursive = TRUE)
 
 
