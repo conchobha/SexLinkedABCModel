@@ -42,7 +42,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   
   reorder <- function(matrix_to_reorder) { #function to reorder the matrix based on a given atlas
     # Load the required data
-    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    load("finalAtlas.rds")
 
 
     # Sort the data frame by the 'LOBE' column
@@ -58,7 +58,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   }
 
   add_RSN_borders <- function() { #function to add the borders to the heatmap if we are ordering
-    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    load("finalAtlas.rds")
     unique_groups <- unique(final_df[order(final_df$LOBE), ])
     group <- unique(unique_groups$LOBE)
     # Manually figure out the rectangles
