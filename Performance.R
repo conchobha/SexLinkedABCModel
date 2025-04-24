@@ -27,14 +27,15 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
     mat_mean <- mean(mat)
     
     # If the mean is already zero, return the matrix unchanged
-    if (mat_mean == 0) {
-      print("Mean is 0")
+    if(abs(mat_mean) <= 0.001)  {
+      print("Mean is very close to 0")
       return(mat)
     }
     
     # Subtract the mean from all elements to center the matrix
     centered_mat <- mat - mat_mean
     print("Mean is not equal to 0, scaling matrix")
+    print(paste("Old mean is ", mat_mean))
     return(centered_mat)
   }
   
@@ -42,7 +43,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   
   reorder <- function(matrix_to_reorder) { #function to reorder the matrix based on a given atlas
     # Load the required data
-    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    load("finalAtlas.rds")
 
 
     # Sort the data frame by the 'LOBE' column
@@ -58,7 +59,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   }
 
   add_RSN_borders <- function() { #function to add the borders to the heatmap if we are ordering
-    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+    load("finalAtlas.rds")
     unique_groups <- unique(final_df[order(final_df$LOBE), ])
     group <- unique(unique_groups$LOBE)
     # Manually figure out the rectangles
@@ -143,18 +144,17 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
       model <- data$model
       g2data <- model$UVPM
     }
-    print("The Average for g2 is: ")
     
     Flag <- TRUE
     fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
     matrix_data <- g1data - g2data
-  } else matrix_data <- g1data # if we are only looking at the heatmap of one group
+  } else matrix_data <- center_matrix(g1data) # if we are only looking at the heatmap of one group
   
 
   if (order) m <- reorder(matrix_data)
   else m <- matrix_data
   
-  center_matrix(m)
+   
 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
@@ -191,7 +191,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
              # addgrid.col = "white",
              cl.pos = "b",
              is.corr = FALSE,
-             col.lim = c(-0.2,.28),
+             col.lim = c(-0.2,.27),
              cl.cex = 1.25
     )
     }
