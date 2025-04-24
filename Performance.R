@@ -501,5 +501,23 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
              axislabcol = "black",
              caxislabels = axis_labels # Force correct label sequence
   )
+
+  # Add a legend
+  if (g1 == 'fmci' && g2 == 'mmci') leglab = c("FMCI > MMCI", "FMCI < MMCI")
+  else if (g1 == 'mmci' && g2 == 'fmci') leglab = c("FMCI < MMCI", "FMCI > MMCI")
+  else leglab = c("CU > MCI", "CU < MCI")
+  legend(
+    x ="bottomright",
+    legend = leglab,
+    bty = "n",
+    pch = 20,
+    col = c("cyan", "orange"),
+    pt.cex = 3,
+    cex = 1.5,
+    text.col = "black",
+    horiz = FALSE
+  )
   dev.off()
 }
+
+CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots'  )
