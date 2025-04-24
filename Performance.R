@@ -297,3 +297,209 @@ AverageAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLink
   saveRDS(file,file=filename)
 }
 
+CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
+                        modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
+                        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots", 
+                        av = TRUE) 
+{
+  #' @param outputdir defines the output directory for the plots
+  #' @param modelloc defines the location of the models
+  #' @param g1 defines the first group
+  #' @param g2 defines the second group
+  #' This measures if we see where g1 is significantly less than g2, more than, or both
+
+  
+  reorder <- function(matrix_to_reorder) {
+    # Load the required data
+    load("finalAtlas.rds")
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+    return(reordered_mat)
+  }
+  
+  
+  o <- paste0(outputdir)
+  CI <- function(x) {
+    quantile(x, probs = c(0.025, 0.975))
+  }
+  # Defines both the lobe names, and where their connections are
+  lobe_info <- list(
+    list(name = "Cingulate", range = c(1, 8)),
+    list(name = "Frontal", range = c(9, 30)),
+    list(name = "Insular", range = c(31, 32)),
+    list(name = "Occipital", range = c(33, 40)),
+    list(name = "Parietal", range = c(41, 50)),
+    list(name = "Subcortical", range = c(51, 64)),
+    list(name = "Temporal", range = c(65, 82))
+  )
+  if (av) { # if we are using average data
+    setwd(modelloc)
+    model1name <- paste0("Average_", g1, "_UVC.rds")
+    model2name <- paste0("Average_", g2, "_UVC.rds")
+    UVC1 <- readRDS(model1name)
+    UVC2_1 <- readRDS(model2name)
+    if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
+    else UVC2 <- UVC2_1
+  } else {
+    setwd(modelloc)
+    model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
+    model1 <- readRDS(model1name)
+    model1 <- model1$model
+    model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
+    model2 <- readRDS(model2name)
+    model2 <- model2$model
+    UVC2 <- model2$UVC
+    UVC1 <- model1$UVC
+  }
+  # Generate the CI's for g1
+  hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+  # How to find which one is the unique region????
+  # do the same for g2
+  
+  # Generate the CI's for g2
+  hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+  
+  # Look for regions in each lobe region in where the CI's do not overlap
+  #   If they do not, add them to a list of regions that are different
+  #   If they do, add them to a list of regions that are the same
+  
+  # It wouldn't be wise to reconstruct the matrix, it'll be easier to parse manually
+  # We know the order of the 84x83/2 goes through each row of the original matrix, until it can't anymore, then it goes to the next column
+  # This matrix stores where we are in the original matrix, and which index in the list responds to that location
+  
+  # Create an 84x84 matrix filled with zeros
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+  index <- 1
+  for (j in 2:84) { # Start from the second column
+    for (i in 1:(j - 1)) { # Only fill below the diagonal
+      loc_matrix[i, j] <- index
+      index <- index + 1
+    }
+  }
+  
+  r <- reorder(loc_matrix)
+  loc_matrix <- r
+  
+  # Now, we can use this matrix to parse our data
+  Greater_Important <- list(
+    list(name = "Cingulate", regions = list()),
+    list(name = "Frontal", regions = list()),
+    list(name = "Insular", regions = list()),
+    list(name = "Occipital", regions = list()),
+    list(name = "Parietal", regions = list()),
+    list(name = "Subcortical", regions = list()),
+    list(name = "Temporal", regions = list())
+  )
+  
+  Lower_Important <- list(
+    list(name = "Cingulate", regions = list()),
+    list(name = "Frontal", regions = list()),
+    list(name = "Insular", regions = list()),
+    list(name = "Occipital", regions = list()),
+    list(name = "Parietal", regions = list()),
+    list(name = "Subcortical", regions = list()),
+    list(name = "Temporal", regions = list())
+  )
+  
+  
+  # if we are making a combined plot
+  for (lobe in lobe_info) {
+    # Get the range of values
+    range <- lobe$range
+    # Get the name of the lobe
+    name <- lobe$name
+    
+    # create empty list
+    Lower_regions <- list()
+    Greater_regions <- list()
+    # We need to parse the reordered loc matrix, and use the correct index to check the CI's
+    for (i in range[1]:range[2]) { # Parse for each column
+      for (j in range[1]:range[2]) { # Parse for each Row
+        # if it is zero, we can pass this one
+        n <- loc_matrix[i, j]
+        if (n == 0) next
+        # if it isnt, we need to grab the CI stored at that point
+        tmp1 <- hi.g1[n, ]
+        tmp2 <- hi.g2[n, ]
+        # check if they overlap
+        if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
+          if (tmp1[2] <= tmp2[1]) {
+            Lower_regions <- append(Lower_regions, list(c(i, j)))
+          } else if (tmp1[1] >= tmp2[2]) {
+            Greater_regions <- append(Greater_regions, list(c(i, j)))
+          }
+        }
+      }
+    }
+    # add the lower and greater to the total list
+    Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
+    Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions
+  }
+  
+  Greater_DF <- data.frame(
+    Name = sapply(Greater_Important, function(x) x$name),
+    TotalConnections = sapply(Greater_Important, function(x) length(x$regions))
+  )
+  
+  Lower_DF <- data.frame(
+    Name = sapply(Lower_Important, function(x) x$name),
+    TotalConnections = sapply(Lower_Important, function(x) length(x$regions))
+  )
+  
+  max_val <- max(Greater_DF$TotalConnections, Lower_DF$TotalConnections)
+  min_val <- 0
+  
+  # make a radar chart of the data using the fmsb library
+  library(fmsb)
+  
+  radar_data <- as.data.frame(rbind(
+    rep(max_val, nrow(Greater_DF)), # Max values
+    rep(min_val, nrow(Greater_DF)), # Min values
+    Greater_DF$TotalConnections,
+    Lower_DF$TotalConnections # Actual values
+  ))
+  
+  colnames(radar_data) <- Greater_DF$Name # Set column names
+  #chart_title <- paste0("Signifigant regions for ", g1, " and ", g2)
+  # Create Spider Plot
+  fname <- paste0(g1, "_", g2, "_spiderplot.pdf")
+  if (!dir.exists(o)) dir.create(o, recursive = TRUE)
+  setwd(o)
+  pdf(file = fname, width = 9)
+  step <- ceiling(max_val / 4) # Ensure step is an integer
+  # Define colors for colorblind-friendly scheme
+  areas <- c(
+    rgb(0, 1, 1, 0.25), # Cyan fill with transparency for the larger group
+    rgb(1, 0.5, 0, 0.25) # Orange fill with transparency for the smaller group
+  )
+  
+  # Generate correct axis labels
+  axis_labels <- seq(0, max_val, by = step) # Generate sequence
+  if (tail(axis_labels, 1) != max_val) {
+    axis_labels <- c(axis_labels, max_val) # Ensure max_val is explicitly included
+  }
+  
+  # Convert labels to character to prevent automatic formatting issues
+  axis_labels <- as.character(axis_labels)
+  
+  # Create radar chart
+  radarchart(radar_data,
+             axistype = 1,
+             pcol = c("cyan", "orange"), # Outline colors
+             pfcol = areas, # Fill the inner area with colors
+             plwd = 3,
+             #          title = chart_title,
+             vlcex = 2,
+             cglcol = "gray",
+             cglty = 2,
+             axislabcol = "black",
+             caxislabels = axis_labels # Force correct label sequence
+  )
+  dev.off()
+}
