@@ -411,7 +411,7 @@ print_values_from_rdata <- function(directory) {
 }
 # Confidence intervals
 # Prints a confidence interval for the given group, comparing the UVPM between the healthy and unhealthy participants in those groups
-CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", av = TRUE) {
+CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", av = TRUE, outputdir) {
   library(dplyr)
   setwd(modeldir) # Set the Directory to where we store the models
   
@@ -566,16 +566,17 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
     axis(side = 1)
     legend("bottomleft", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
   }
-  
+  o <- paste(outputdir,"/")
+  if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   # Plot Positives
-  pdf(paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/CIs/", group, metric, "CIPos.pdf"), height = 11, width = 7)
+  pdf(paste0(o, group, metric, "CIPos.pdf"), height = 11, width = 7)
   message("Generating positive connectivity plot...")
   plot_CI_95_dem(min(length(pospe.g1), length(pospe.g5)), pospe.g1, positives.g1, pospe.g5, positives.g5, order_pos)
   dev.off()
   message("Positive connectivity plot saved.")
   
   # Plot Negatives
-  pdf(paste0("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/CIs/", group, metric, "CINeg.pdf"), height = 11, width = 7)
+  pdf(paste0(o, group, metric, "CINeg.pdf"), height = 11, width = 7)
   message("Generating negative connectivity plot...")
   plot_CI_95_dem(min(length(negpe.g1), length(negpe.g5)), negpe.g1, negatives.g1, negpe.g5, negatives.g5, order_neg, is_positive = FALSE)
   dev.off()

@@ -521,3 +521,4 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
 }
 
 CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots'  )
+CI(group = 'f', modeldir = '~/Documents/Work/ModelFiles', outputdir = '~/Downloads/WorkPlots')
