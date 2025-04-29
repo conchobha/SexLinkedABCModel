@@ -564,7 +564,7 @@ CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/S
     
     axis(side = 2, at = 1:B, labels = order_pos, cex.axis = 0.5, padj = 0.6, las = 2)
     axis(side = 1)
-    legend("bottomleft", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
+    legend("bottomright", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
   }
   o <- paste(outputdir,"/")
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)

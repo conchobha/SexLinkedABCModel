@@ -41,9 +41,10 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   
   
   
-  reorder <- function(matrix_to_reorder) { #function to reorder the matrix based on a given atlas
+  reorder <- function(matrix_to_reorder, wd = '~/Documents/Work/ModelFiles' ) { #function to reorder the matrix based on a given atlas
     # Load the required data
-    load("finalAtlas.rds")
+    setwd(wd)
+    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
 
 
     # Sort the data frame by the 'LOBE' column
@@ -59,7 +60,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   }
 
   add_RSN_borders <- function() { #function to add the borders to the heatmap if we are ordering
-    load("finalAtlas.rds")
+    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
     unique_groups <- unique(final_df[order(final_df$LOBE), ])
     group <- unique(unique_groups$LOBE)
     # Manually figure out the rectangles
@@ -134,20 +135,68 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
   }
   fname <- paste0(g1, "_heatmap2.pdf")
   if (!is.na(g2)) {
-    # load data for g2, if we are doing a comparison map
-    if (av) {
-      g2name <- paste0("Average_", g2, "_UVPM.rds")
-      g2data <- readRDS(g2name)
-    } else {
-      g2name <- paste0("ADNI_OD_", g2, "_mean_1e+05_1000.rdata")
-      data <- readRDS(g2name)
-      model <- data$model
-      g2data <- model$UVPM
-    }
-    
     Flag <- TRUE
     fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
-    matrix_data <- g1data - g2data
+    # Modify the code to calc the 95% CI for these. If g2 is much less, set it to -1, elif it's more, 1, else 0
+  CI <- function(x) {
+    quantile(x, probs = c(0.025, 0.975))
+  }
+     # load the MCMC data for both groups
+    model1name <- paste0("Average_", g1, "_UVC.rds")
+    model2name <- paste0("Average_", g2, "_UVC.rds")
+    UVC1 <- readRDS(model1name)
+    UVC2_1 <- readRDS(model2name)
+    if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
+    else UVC2 <- UVC2_1
+
+    hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+    hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+
+     # Create an 84x84 matrix filled with zeros
+    loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+    index <- 1
+    for (j in 2:84) { # Start from the second column
+      for (i in 1:(j - 1)) { # Only fill below the diagonal
+        loc_matrix[i, j] <- index
+        index <- index + 1
+     }
+    }
+
+    # We can use this matrix to pull the proper CI's for each connection, then return the matrix to be made into the heatmap
+    # Use the number stored in the loc_matrix to pull the CI's from the hi.g1 and hi.g2 matrices
+    matrix_data <- matrix(0, nrow = 84, ncol = 84)
+    for (i in 1:84) {
+      for (j in 1:84) {
+        n <- loc_matrix[i, j]
+        if (n == 0) next
+        tmp1 <- hi.g1[n, ]
+        tmp2 <- hi.g2[n, ]
+        if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
+          if (tmp1[2] <= tmp2[1]) {
+            matrix_data[i, j] <- -1
+          } else if (tmp1[1] >= tmp2[2]) {
+            matrix_data[i, j] <- 1
+          } 
+          }
+        }
+      }
+    # We need to make sure the matrix is symmetric
+    for (i in 1:nrow(matrix_data)) {
+      for (j in 1:ncol(matrix_data)) {
+        if (i != j) {
+          # Check if matrix_data[i, j] is zero but matrix_data[j, i] is non-zero
+          if (matrix_data[i, j] == 0 && matrix_data[j, i] != 0) {
+            matrix_data[i, j] <- matrix_data[j, i]
+          }
+          # Check if matrix_data[j, i] is zero but matrix_data[i, j] is non-zero
+          else if (matrix_data[j, i] == 0 && matrix_data[i, j] != 0) {
+            matrix_data[j, i] <- matrix_data[i, j]
+          }
+        }
+      }
+    }
   } else matrix_data <- center_matrix(g1data) # if we are only looking at the heatmap of one group
   
 
@@ -161,24 +210,24 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
    #12 if we are doing full size, 8.5 if side by side 
   if(Flag){
     library(corrplot)
-    pdf(file = fname, width =12)
+    pdf(file = fname, width = 12)
     
-    # Define a matrix of colors based on sign, making 0 white
-    col_matrix <- ifelse(abs(m) < 0.05, "white", 
-                         ifelse(m < 0, "#1F77B4", "#FF7F0E"))
+    # Define the color palette: blue for -1, white for 0, orange for 1
+    color_palette <- colorRampPalette(c("#1F77B4", "white", "#FF7F0E"))(200)
     
-    # Plot the full correlation matrix (no triangle mask)
+    # Plot the matrix
     corrplot(m,
              method = "color",
-             col = col_matrix,
-             tl.pos = "n",   # Remove axis labels (numbers)
-             cl.pos = "n",   # Remove default color legend
-             is.corr = FALSE
+             col = color_palette,
+             tl.pos = "n",   # Remove axis labels
+             cl.pos = "n",   # Remove color legend
+             is.corr = FALSE,
+             col.lim = c(-1, 1)   # This is important! Map -1 to +1
     )
     
-    # Add a custom legend on the right
+    # Add a custom legend
     legend("right", legend = c("Smaller", "Near no difference", "Larger"), 
-          fill = c("#1F77B4", "#FFFFFF", "#FF7F0E"), 
+           fill = c("#1F77B4", "#FFFFFF", "#FF7F0E"), 
            bty = "n", cex = 1.2)
     
     
@@ -520,5 +569,68 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   dev.off()
 }
 
-CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots'  )
+disgraph <- function(loc = '~/Downloads/APM') { # violin plot code 
+  setwd(loc)
+  grouplist <- c("fcn", "fscd", "fmci", "mcn", "mscd", "mmci")  # Change this to a vector
+  datalist <- list()
+  
+  for (g in grouplist) {
+    data <- readRDS(paste0('Average_', g, "_APM.rds"))
+    APM <- data$APM
+    matrix_data <- matrix(unlist(APM), nrow = length(APM), byrow = TRUE)
+    Av <- colMeans(matrix_data)
+    datalist[[g]] <- Av
+  }
+  
+  library(ggplot2)
+  library(tidyr)
+  library(dplyr)
+  
+  # Convert list to data frame
+  datalist_df <- stack(datalist)
+  colnames(datalist_df) <- c("value", "group")
+  
+  # Recode group names
+  group_labels <- c(
+    fcn = "Healthy Female",
+    fscd = "Female SCD",
+    fmci = "Female MCI",
+    mcn = "Healthy Male",
+    mscd = "Male SCD",
+    mmci = "Male MCI"
+  )
+  
+  # Count number of datapoints per group
+  counts <- datalist_df %>%
+    group_by(group) %>%
+    summarise(n = n(), .groups = 'drop')
+  
+  # Create group labels with counts
+  counts$label <- paste0(group_labels[counts$group], " (n = ", counts$n, ")")
+  
+  # Join updated labels into datalist_df
+  datalist_df <- datalist_df %>%
+    left_join(counts, by = "group")
+  
+  # Set the order of the group factor to preserve the grouplist order
+  datalist_df$label <- factor(datalist_df$label, levels = paste0(group_labels[grouplist], " (n = ", counts$n, ")"))
+  
+  # Violin plot with group-specific n values in x-axis labels
+  ggplot(datalist_df, aes(x = label, y = value)) +
+    geom_violin(fill = "gray85", color = "black", trim = FALSE) +
+    geom_boxplot(width = 0.1, outlier.shape = NA, color = "black", fill = "white") +
+    theme_minimal() +
+    labs(y = "Average APM", x = "") +
+    theme(
+      legend.position = "none",
+      axis.text = element_text(size = 18, angle = 45, hjust = 1),
+      axis.title = element_text(size = 16),
+      strip.text = element_text(size = 14),
+      plot.title = element_text(size = 18, face = "bold")
+    )
+}
+
+CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots' )
 CI(group = 'f', modeldir = '~/Documents/Work/ModelFiles', outputdir = '~/Downloads/WorkPlots')
+
+
