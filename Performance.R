@@ -8,17 +8,18 @@
 
 
 
-Heatmap <- function(g1, g2 = NA, av = TRUE,
+Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE, 
                     modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
-                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/",
-                    order = TRUE) {
+                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
+                    ) {
   #' @param g1: The first group to be used in the heatmap
   #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
   #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output
+  #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap. Be sure to have an atlas file
   #' @param modeldir: The directory where the model outputs are stored. If using av, point it to where the average data is stored
   #' @param outputdir: The directory where the heatmap will be saved\
-  #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap
-  #' @description A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given. If a second group is given, it will give the difference between the two groups
+  
+  #' @description A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given. If a second group is given, it will give the difference between the two groups using computed CI's
   library(corrplot)
   Flag <- FALSE # Flag to determine if we are doing a comparison map or not
   
