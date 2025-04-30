@@ -360,7 +360,7 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   
   reorder <- function(matrix_to_reorder) {
     # Load the required data
-    load("finalAtlas.rds")
+    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
     # Sort the data frame by the 'LOBE' column
     sorted_df <- final_df[order(final_df$LOBE), ]
     # Reorder the rows based on the sorted indices
