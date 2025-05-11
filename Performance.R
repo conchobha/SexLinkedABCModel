@@ -174,11 +174,11 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
         if (n == 0) next
         tmp1 <- hi.g1[n, ]
         tmp2 <- hi.g2[n, ]
-        if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-          if (tmp1[2] <= tmp2[1]) {
-            matrix_data[i, j] <- -1
-          } else if (tmp1[1] >= tmp2[2]) {
+        if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+          if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
             matrix_data[i, j] <- 1
+          } else if (tmp1[1] >= tmp2[2]) {
+            matrix_data[i, j] <- -1
           } 
           }
         }
@@ -463,11 +463,11 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
       if (n == 0) next
       tmp1 <- hi.g1[n, ]
       tmp2 <- hi.g2[n, ]
-      if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-        if (tmp1[2] <= tmp2[1]) {
-          matrix_data[i, j] <- -1
-        } else if (tmp1[1] >= tmp2[2]) {
+      if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+        if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
           matrix_data[i, j] <- 1
+        } else if (tmp1[1] >= tmp2[2]) {
+          matrix_data[i, j] <- -1
         } 
       }
     }
