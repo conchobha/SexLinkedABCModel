@@ -1,37 +1,34 @@
-# This script is what is called to define the parameters, and run the model
-
-setwd(getwd()) #All needed functions should be in the same directory as this script
-source("dMRIABC.R") # Source our model script
-
+#Used to Run the Final Model after tweaking
+# Source the Needed Functions
+setwd(getwd())
+source("dMRIABC.R") # Adds the Functions we need in order to run the model
 #Set up The variables
+
 fn <- 100
-burns <- 1000 #how many itterations to burn
-itterations <- 200000 #how many itterations to run
-grouplist <- list('fcn','fmci','fscd','mcn','mmci','mscd') # Define the list of our groups
+burns <- 1000
+grouplist <- list(#'fcn','fmci',
+                  'fscd','mcn','mmci','mscd') # Ensure correct names for groups
 
-args = commandArgs(trailingOnly = TRUE) #pull the arguments from the command line call
+args = commandArgs(trailingOnly = TRUE)
 #We are going to be passing the group and replication, group
-gr <- as.numeric(args[1]) #Define which group we are using out of the six total
-group <- grouplist[gr]
+group <- grouplist[as.numeric(args[1])] # 6 groups
+DM <- as.numeric(args[2])
+rep <- as.numeric(args[3])
+# Pull Which dim we are using 
+#for OD
+#dm 1 for FCN, 2 for others 
 
+dm <- 'OD'
 
-#DM <- as.numeric(args[2]) #Define which dim we are using out of the 1-8
-rep <- as.numeric(args[2]) #Define which replication we doing. Impacts both seed and output location
-
-DM <- 1
-
-Metric <- 'OD' 
-
-output_loc <- paste0("/N/slate/conlcorn/SexLinkedProject/FinalModels_MoreDim/",Metric,"/Rep-",rep,"/") #make sure to make this directory before running the script to avoid errors
+output_loc <- paste0("/N/slate/conlcorn/SexLinked/Project/DimTesting/",DM,"/Rep-",rep,"/")
 if (!dir.exists(output_loc)) dir.create(output_loc,recursive = TRUE)
+set.seed(rep*DM)
 
-
-set.seed(rep*DM*as.numeric(args[1])) #sets the seed in a way every run is unique, but repeatable
-
-RunModel(dataname=Metric, #sourced from dMRIABC.R
+RunModel(dataname=dm,
          dn=DM,
          num=rep,
-         sn=itterations,
+         sn=50000,
          group=group,
          outputDIR=output_loc
-)
+         )
+

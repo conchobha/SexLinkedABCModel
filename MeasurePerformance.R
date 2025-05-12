@@ -1063,6 +1063,7 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   # Initialize a list to store the data
   data_list <- list()
   # Loop through each folder
+ dim <- 2
   for (folder in folders)
   {
     # Get the file name
@@ -1073,6 +1074,8 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
       data <- readRDS(paste0(folder, "/", filename))
       # Extract the model
       model <- data$model
+      input <- model$input
+      if(input$K != 2) stop("You have the wrong dim in the file structure")
       # Extract the UVC or UVPM
       if (est == "UVC") {
         data_list[[folder]] <- model$UVC
@@ -1096,17 +1099,23 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
     # Divide by the number of matrices to get the average
     average_matrix <- average_matrix / length(data_list)
     # Save the average matrix as an RDS file
-    saveRDS(average_matrix, paste0(location, "Average_", group, "_", est, ".rds"))
+    print("Saving file")
+    saveRDS(average_matrix, paste0(location, "/Average_", group, "_", est,".rds"))
   }
 }
 
 MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVPM',group = 'fcn')
 MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVC',group = 'fcn')
 MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVPM',group = 'fscd')
-MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD_DM1',est = 'UVC',group = 'fscd')
 
+grouplist <- list("fcn", "fmci", "mcn", "mmci")
 
-AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn",metric = 'OD') {
+for(g in grouplist){
+  MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/OldModels/Dim2Models',est = 'UVC',group = g)
+  MakeAverage(location = '/N/slate/conlcorn/SexLinkedProject/OldModels/Dim2Models',est = 'UVPM',group = g)
+}
+
+ AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn",metric = 'OD') {
   # Plan:
   # Build a matrix of the Correlation in each model
   # Find the average of each model
@@ -1384,7 +1393,7 @@ avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedPro
   saveRDS(file,file=filename)
 }
 
-for(g in grouplist) avAPM(g = g)
+for(g in grouplist) avAPM(g = g,modelloc = '/N/slate/conlcorn/SexLinkedProject/OldModels/Dim2Models')
 
 
 APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
