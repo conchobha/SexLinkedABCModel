@@ -8,17 +8,18 @@
 
 
 
-Heatmap <- function(g1, g2 = NA, av = TRUE,
+Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE, 
                     modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
-                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/",
-                    order = TRUE) {
+                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
+                    ) {
   #' @param g1: The first group to be used in the heatmap
   #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
   #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output
+  #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap. Be sure to have an atlas file
   #' @param modeldir: The directory where the model outputs are stored. If using av, point it to where the average data is stored
   #' @param outputdir: The directory where the heatmap will be saved\
-  #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap
-  #' @description A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given. If a second group is given, it will give the difference between the two groups
+  
+  #' @description A universal function for making heatmaps. Given a group, and if to order, it will generate a heatmap for the model given. If a second group is given, it will give the difference between the two groups using computed CI's
   library(corrplot)
   Flag <- FALSE # Flag to determine if we are doing a comparison map or not
   
@@ -173,11 +174,11 @@ Heatmap <- function(g1, g2 = NA, av = TRUE,
         if (n == 0) next
         tmp1 <- hi.g1[n, ]
         tmp2 <- hi.g2[n, ]
-        if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-          if (tmp1[2] <= tmp2[1]) {
-            matrix_data[i, j] <- -1
-          } else if (tmp1[1] >= tmp2[2]) {
+        if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+          if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
             matrix_data[i, j] <- 1
+          } else if (tmp1[1] >= tmp2[2]) {
+            matrix_data[i, j] <- -1
           } 
           }
         }
@@ -360,7 +361,7 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   
   reorder <- function(matrix_to_reorder) {
     # Load the required data
-    load("finalAtlas.rds")
+    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
     # Sort the data frame by the 'LOBE' column
     sorted_df <- final_df[order(final_df$LOBE), ]
     # Reorder the rows based on the sorted indices
@@ -420,7 +421,28 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   # We know the order of the 84x83/2 goes through each row of the original matrix, until it can't anymore, then it goes to the next column
   # This matrix stores where we are in the original matrix, and which index in the list responds to that location
   
-  # Create an 84x84 matrix filled with zeros
+  # Now, we can use this matrix to parse our data
+  Greater_Important <- list(
+    list(name = "Cingulate", value = NA),
+    list(name = "Frontal", value = NA),
+    list(name = "Insular", value = NA),
+    list(name = "Occipital", value = NA),
+    list(name = "Parietal", value = NA),
+    list(name = "Subcortical", value = NA),
+    list(name = "Temporal", value = NA)
+  )
+  
+  Lower_Important <- list(
+    list(name = "Cingulate", value = NA),
+    list(name = "Frontal", value = NA),
+    list(name = "Insular", value = NA),
+    list(name = "Occipital", value = NA),
+    list(name = "Parietal", value = NA),
+    list(name = "Subcortical", value = NA),
+    list(name = "Temporal", value = NA)
+  )
+  
+  
   loc_matrix <- matrix(0, nrow = 84, ncol = 84)
   
   # Start filling the upper triangle downwards, column by column
@@ -432,74 +454,50 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
     }
   }
   
-  r <- reorder(loc_matrix)
-  loc_matrix <- r
-  
-  # Now, we can use this matrix to parse our data
-  Greater_Important <- list(
-    list(name = "Cingulate", regions = list()),
-    list(name = "Frontal", regions = list()),
-    list(name = "Insular", regions = list()),
-    list(name = "Occipital", regions = list()),
-    list(name = "Parietal", regions = list()),
-    list(name = "Subcortical", regions = list()),
-    list(name = "Temporal", regions = list())
-  )
-  
-  Lower_Important <- list(
-    list(name = "Cingulate", regions = list()),
-    list(name = "Frontal", regions = list()),
-    list(name = "Insular", regions = list()),
-    list(name = "Occipital", regions = list()),
-    list(name = "Parietal", regions = list()),
-    list(name = "Subcortical", regions = list()),
-    list(name = "Temporal", regions = list())
-  )
-  
-  
-  # if we are making a combined plot
-  for (lobe in lobe_info) {
-    # Get the range of values
-    range <- lobe$range
-    # Get the name of the lobe
-    name <- lobe$name
-    
-    # create empty list
-    Lower_regions <- list()
-    Greater_regions <- list()
-    # We need to parse the reordered loc matrix, and use the correct index to check the CI's
-    for (i in range[1]:range[2]) { # Parse for each column
-      for (j in range[1]:range[2]) { # Parse for each Row
-        # if it is zero, we can pass this one
-        n <- loc_matrix[i, j]
-        if (n == 0) next
-        # if it isnt, we need to grab the CI stored at that point
-        tmp1 <- hi.g1[n, ]
-        tmp2 <- hi.g2[n, ]
-        # check if they overlap
-        if (!max(tmp1[1], tmp2[1]) <= min(tmp1[2], tmp2[2])) {
-          if (tmp1[2] <= tmp2[1]) {
-            Lower_regions <- append(Lower_regions, list(c(i, j)))
-          } else if (tmp1[1] >= tmp2[2]) {
-            Greater_regions <- append(Greater_regions, list(c(i, j)))
-          }
-        }
+  # We can use this matrix to pull the proper CI's for each connection, then return the matrix to be made into the heatmap
+  # Use the number stored in the loc_matrix to pull the CI's from the hi.g1 and hi.g2 matrices
+  matrix_data <- matrix(0, nrow = 84, ncol = 84)
+  for (i in 1:84) {
+    for (j in 1:84) {
+      n <- loc_matrix[i, j]
+      if (n == 0) next
+      tmp1 <- hi.g1[n, ]
+      tmp2 <- hi.g2[n, ]
+      if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+        if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+          matrix_data[i, j] <- 1
+        } else if (tmp1[1] >= tmp2[2]) {
+          matrix_data[i, j] <- -1
+        } 
       }
     }
-    # add the lower and greater to the total list
-    Greater_Important[[which(sapply(Greater_Important, function(x) x$name) == name)]]$regions <- Greater_regions
-    Lower_Important[[which(sapply(Lower_Important, function(x) x$name) == name)]]$regions <- Lower_regions
   }
+
   
+  # Reorder the matrix based on lobes
+  ordered_matrix <- reorder(matrix_data)
+  for (lobe in lobe_info) {
+    range <- lobe$range
+    name <- lobe$name
+    sub_matrix <- ordered_matrix[range[1]:range[2], range[1]:range[2]]
+    greater <- sum(sub_matrix == 1)
+    lesser  <- sum(sub_matrix == -1)
+    # Find the index for the matching lobe name
+    lobe_index <- which(sapply(Greater_Important, function(x) x$name == name))
+    
+    # Append values (can be replaced with any structure you want)
+    Greater_Important[[lobe_index]]$value <- greater
+    Lower_Important[[lobe_index]]$value   <- lesser
+  }
   Greater_DF <- data.frame(
     Name = sapply(Greater_Important, function(x) x$name),
-    TotalConnections = sapply(Greater_Important, function(x) length(x$regions))
+    TotalConnections = sapply(Greater_Important, function(x) x$value)
   )
   
   Lower_DF <- data.frame(
     Name = sapply(Lower_Important, function(x) x$name),
-    TotalConnections = sapply(Lower_Important, function(x) length(x$regions))
-  )
+    TotalConnections = sapply(Lower_Important, function(x) x$value))
+  
   
   max_val <- max(Greater_DF$TotalConnections, Lower_DF$TotalConnections)
   min_val <- 0
@@ -509,9 +507,10 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   
   radar_data <- as.data.frame(rbind(
     rep(max_val, nrow(Greater_DF)), # Max values
-    rep(min_val, nrow(Greater_DF)), # Min values
-    Greater_DF$TotalConnections,
-    Lower_DF$TotalConnections # Actual values
+    rep(min_val, nrow(Greater_DF)), 
+    Lower_DF$TotalConnections, # Actual values# Min values
+    Greater_DF$TotalConnections
+   
   ))
   
   colnames(radar_data) <- Greater_DF$Name # Set column names
@@ -630,7 +629,7 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
     )
 }
 
-CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots' )
+CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots')
 CI(group = 'f', modeldir = '~/Documents/Work/ModelFiles', outputdir = '~/Downloads/WorkPlots')
 
 
