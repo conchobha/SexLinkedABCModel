@@ -604,26 +604,30 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
     group_by(group) %>%
     summarise(n = n(), .groups = 'drop')
   
-  # Create group labels with counts
-  counts$label <- paste0(group_labels[counts$group], " (n = ", counts$n, ")")
+  # Create group labels with line break before n
+  counts$label <- paste0(group_labels[counts$group], "\n(n = ", counts$n, ")")
   
   # Join updated labels into datalist_df
   datalist_df <- datalist_df %>%
     left_join(counts, by = "group")
   
-  # Set the order of the group factor to preserve the grouplist order
-  datalist_df$label <- factor(datalist_df$label, levels = paste0(group_labels[grouplist], " (n = ", counts$n, ")"))
+  # Set factor levels in the correct order
+  label_levels <- sapply(grouplist, function(g) {
+    paste0(group_labels[g], "\n(n = ", counts$n[counts$group == g], ")")
+  })
+  
+  datalist_df$label <- factor(datalist_df$label, levels = label_levels)
   
   # Violin plot with group-specific n values in x-axis labels
   ggplot(datalist_df, aes(x = label, y = value)) +
     geom_violin(fill = "gray85", color = "black", trim = FALSE) +
     geom_boxplot(width = 0.1, outlier.shape = NA, color = "black", fill = "white") +
     theme_minimal() +
-    labs(y = "Average APM", x = "") +
+    labs(y = "Participant Connectivity Density", x = "") +
     theme(
       legend.position = "none",
-      axis.text = element_text(size = 18, angle = 45, hjust = 1),
-      axis.title = element_text(size = 16),
+      axis.text = element_text(size = 24, angle = 45, hjust = 1),
+      axis.title = element_text(size = 20),
       strip.text = element_text(size = 14),
       plot.title = element_text(size = 18, face = "bold")
     )

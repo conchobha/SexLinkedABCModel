@@ -217,7 +217,8 @@ subjectHeatmap <- function(group) {
 
 Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", 
                       group, av = TRUE, 
-                      filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD") {
+                      filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
+                      outputdir) {
   library(coda)
   setwd(filedir)
   if(!av){
@@ -239,7 +240,7 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   # model1$TAC
   
   mc1 <- mcmc(data = UVC1, start = 1, end = nrow(UVC1), thin = 1)
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/Traceplots")
+  setwd(outputdir)
   pdf(file = paste0(group, "_Traceplot.pdf"))
   traceplot(mc1, ylab = "Covariance Estimate")
   dev.off()
