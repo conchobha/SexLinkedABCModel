@@ -626,14 +626,14 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
     labs(y = "Participant Connectivity Density", x = "") +
     theme(
       legend.position = "none",
-      axis.text = element_text(size = 24, angle = 45, hjust = 1),
-      axis.title = element_text(size = 20),
+      axis.text = element_text(size = 30, angle = 45, hjust = 1),
+      axis.title = element_text(size = 26),
       strip.text = element_text(size = 14),
       plot.title = element_text(size = 18, face = "bold")
     )
 }
 
-CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots')
-CI(group = 'f', modeldir = '~/Documents/Work/ModelFiles', outputdir = '~/Downloads/WorkPlots')
+#CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots')
+#CI(group = 'f', modeldir = '~/Documents/Work/ModelFiles', outputdir = '~/Downloads/WorkPlots')
 
 
