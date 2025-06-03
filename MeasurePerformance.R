@@ -225,7 +225,7 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   model1 <- data$model
   UVPM1 <- model1$UVPM
   l <- data$sn / 10
-  UVC1 <- model1$UVC[4500:7500, 90:100]
+  UVC1 <- model1$UVC[, 90:100]
   }else{
     UVC_name <- paste0("Average_",group,"_UVC.rds")
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
@@ -239,7 +239,7 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   # model1$TAC
   
   mc1 <- mcmc(data = UVC1, start = 1, end = nrow(UVC1), thin = 1)
-  setwd("/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/Traceplots")
+  setwd(filedir)
   pdf(file = paste0(group, "_Traceplot.pdf"))
   traceplot(mc1, ylab = "Covariance Estimate")
   dev.off()
@@ -1055,7 +1055,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
-MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = "fcn") {
+MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = "fcn", metric = 'OD') {
   # Load the files
   setwd(location)
   # Get a list of all the folders in the directory
@@ -1067,7 +1067,7 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
   for (folder in folders)
   {
     # Get the file name
-    filename <- paste0("ADNI_OD_", group, "_mean_2e+05_1000.rdata")
+    filename <- paste0("ADNI_",metric,"_", group, "_mean_2e+05_1000.rdata")
     # Check if the file exists in the folder
     if (file.exists(paste0(folder, "/", filename))) {
       # Load the file
@@ -1434,4 +1434,69 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
     APMTesting(g1 = g1, g2 = g2)
   }
 }
+
+
+AttibuteCompare <- function(g1,g2,modelloc,av = TRUE)
+{
+  # Function that takes in two regions, and checks the THETAPM for both attributes, and sees which regions are display the largest difference between groups, 
+  # It then returns both the number, the difference in CI, and the name of the region 
+  
+  if(av) {
+    warning("Not Supported Yet")
+    return()
+    }
+  else{
+    g1name <- paste('Average_',g1,'_TAC.rds')
+    g2name <- paste('Average_',g2,'_TAC.rds')
+    
+    g1data <- readRDS(g1name)
+    g2data <- readRDS(g2name)
+  }
+  
+  # Generate the CI's 
+  CI <- function(x) {
+    quantile(x, probs = c(0.025, 0.975))
+  }
+  
+  hi.g1 <- t(apply(g1data, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 168x2 matrix
+  hi.g2 <- t(apply(g2data, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+  # Determine if they overlap
+  Tau <- matrix(0,nrow=84)
+  Amy <- matrix(0,nrow=84)
+  for(i in 1:84)#84 total regions
+  {
+    tauindex <- i*2-1
+    AmyIndex <- i*2
+    #Tau
+    tmp1 <- hi.g1[tauindex, ]
+    tmp2 <- hi.g2[tauindex, ]
+    if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+      if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+        Tau[i,] <- 1
+      } else if (tmp1[1] >= tmp2[2]) {
+        Tau[i,] <- -1
+      } 
+    }
+    
+    #Amy
+    tmp1 <- hi.g1[AmyIndex, ]
+    tmp2 <- hi.g2[AmyIndex, ]
+    if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+      if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+        Amy[i,] <- 1
+      } else if (tmp1[1] >= tmp2[2]) {
+        Amy[i,] <- -1
+      } 
+    }
+    
+  }
+  
+  # if more then 10 do, say so and print the first 10
+  # get the count in each matrix of the number of -1s, and 1s
+  # if less then 10 regions, print the ones that do
+  
+}
+
+
+
 

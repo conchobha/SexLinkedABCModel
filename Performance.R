@@ -8,13 +8,14 @@
 
 
 
-Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE, 
+Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, 
+                    atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds',
                     modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                     outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
                     ) {
   #' @param g1: The first group to be used in the heatmap
   #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
-  #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output
+  #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output. Use Average for most final plots 
   #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap. Be sure to have an atlas file
   #' @param modeldir: The directory where the model outputs are stored. If using av, point it to where the average data is stored
   #' @param outputdir: The directory where the heatmap will be saved\
@@ -36,16 +37,15 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
     # Subtract the mean from all elements to center the matrix
     centered_mat <- mat - mat_mean
     print("Mean is not equal to 0, scaling matrix")
-    print(paste("Old mean is ", mat_mean))
+    print(paste("Old mean was ", mat_mean))
     return(centered_mat)
   }
   
   
   
-  reorder <- function(matrix_to_reorder, wd = '~/Documents/Work/ModelFiles' ) { #function to reorder the matrix based on a given atlas
+  reorder <- function(matrix_to_reorder, atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds' ) { #function to reorder the matrix based on a given atlas
     # Load the required data
-    setwd(wd)
-    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
+    load(atlasloc)
 
 
     # Sort the data frame by the 'LOBE' column
@@ -60,8 +60,8 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
     return(reordered_mat)
   }
 
-  add_RSN_borders <- function() { #function to add the borders to the heatmap if we are ordering
-    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
+  add_RSN_borders <- function(atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds') { #function to add the borders to the heatmap if we are ordering
+    load(atlasloc)
     unique_groups <- unique(final_df[order(final_df$LOBE), ])
     group <- unique(unique_groups$LOBE)
     # Manually figure out the rectangles
@@ -122,17 +122,19 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
 
   setwd(modeldir)
   o <- outputdir 
+  if (is.na(g2)){
   if (av) { 
     # load the data for g1
     g1name <- paste0("Average_", g1, "_UVPM.rds")
     g1data <- readRDS(g1name)
   } else {
     # load the data for g1
-    g1name <- paste0("ADNI_OD_", g1, "_mean_1e+05_1000.rdata")
+    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata")
     data <- readRDS(g1name)
     model <- data$model
     g1data <- model$UVPM
     
+    }
   }
   fname <- paste0(g1, "_heatmap2.pdf")
   if (!is.na(g2)) {
@@ -143,12 +145,29 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
     quantile(x, probs = c(0.025, 0.975))
   }
      # load the MCMC data for both groups
+  if(av){
     model1name <- paste0("Average_", g1, "_UVC.rds")
     model2name <- paste0("Average_", g2, "_UVC.rds")
-    UVC1 <- readRDS(model1name)
+    UVC1_1 <- readRDS(model1name)
     UVC2_1 <- readRDS(model2name)
-    if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
-    else UVC2 <- UVC2_1
+  }else{
+    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata")
+    data <- readRDS(g1name)
+    model <- data$model
+    UVC1_1 <- model$UVC
+    
+    g2name <- paste0("ADNI_",metric,"_", g2, "_mean_2e+05_1000.rdata")
+    data <- readRDS(g2name)
+    model <- data$model
+    UVC2_1<- model$UVC
+  }
+   # if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
+    #else UVC2 <- UVC2_1
+    #if(g1 == 'fmci') UVC1 <- UVC1_1[4500:5500,]
+    #else UVC1 <- UVC1_1
+    UVC1 <- UVC1_1
+    UVC2 <- UVC2_1
+    
 
     hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
     hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
@@ -172,6 +191,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
       for (j in 1:84) {
         n <- loc_matrix[i, j]
         if (n == 0) next
+        
         tmp1 <- hi.g1[n, ]
         tmp2 <- hi.g2[n, ]
         if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
@@ -201,7 +221,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
   } else matrix_data <- center_matrix(g1data) # if we are only looking at the heatmap of one group
   
 
-  if (order) m <- reorder(matrix_data)
+  if (order) m <- reorder(matrix_data, atlasloc = atlasloc)
   else m <- matrix_data
   
    
@@ -212,11 +232,13 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
   if(Flag){
     library(corrplot)
     pdf(file = fname, width = 12)
-    
+    m[m > 1] <- 1
+    m[m < -1] <- -1
     # Define the color palette: blue for -1, white for 0, orange for 1
     color_palette <- colorRampPalette(c("#1F77B4", "white", "#FF7F0E"))(200)
     
     # Plot the matrix
+    suppressWarnings({
     corrplot(m,
              method = "color",
              col = color_palette,
@@ -225,6 +247,7 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
              is.corr = FALSE,
              col.lim = c(-1, 1)   # This is important! Map -1 to +1
     )
+    })
     
     # Add a custom legend
     legend("right", legend = c("Smaller", "Near no difference", "Larger"), 
@@ -241,13 +264,13 @@ Heatmap <- function(g1, g2 = NA, av = TRUE, order = TRUE,
              # addgrid.col = "white",
              cl.pos = "b",
              is.corr = FALSE,
-             col.lim = c(-0.2,.27),
+            # col.lim = c(-0.2,.27),
              cl.cex = 1.25
     )
     }
   
   
-  if (order) add_RSN_borders()
+  if (order) add_RSN_borders(atlasloc = atlasloc)
   dev.off()
 }
 
@@ -629,7 +652,6 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
     )
 }
 
-CI_SpiderPlot(modelloc ='~/Documents/Work/ModelFiles' , outputdir = '~/Downloads/WorkPlots')
-CI(group = 'f', modeldir = '~/Documents/Work/ModelFiles', outputdir = '~/Downloads/WorkPlots')
+
 
 

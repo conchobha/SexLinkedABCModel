@@ -58,7 +58,7 @@ RunModel <- function(dataname='OD',
 #' @param dataloc defines where the preprocessed data is stored 
   cpath <- getwd()
   start <- Sys.time()
-	
+	set.seed(dn*fn*num)
   setwd(cpath) # Set the working directory to the location of the script
   sourceEntireFolder("code_behavior_updated",verbose = FALSE, showWarnings=TRUE) # Source the entire folder containing the functions
   # This is where the ABC function is located

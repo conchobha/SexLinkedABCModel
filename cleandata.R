@@ -176,5 +176,9 @@ remakeAtlas <- function()
   save(final_df, file = "finalAtlas.rds")
   
 }
+grouplist <- list("fcn", "fmci", 
+                  "fscd", "mcn", "mmci", "mscd"
+)
+metriclist <- list("Da","Dr","FA","ICVF","MD")
 
-for(g in grouplist) savedata(group = g, datametric = "meanlength")
+for(g in grouplist) for (m in metriclist) savedata(group = g, datametric = m)
