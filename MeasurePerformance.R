@@ -1058,7 +1058,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
 MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = "fcn", metric = 'OD') {
-  #' @param est defines the type of estimate to use, either UVC,UVPM, or TAV
+  #' @param est defines the type of estimate to use, either UVC,UVPM, or TAC
   # Load the files
   setwd(location)
   # Get a list of all the folders in the directory
@@ -1084,10 +1084,10 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
         data_list[[folder]] <- model$UVC
       } else if (est == "UVPM") {
         data_list[[folder]] <- model$UVPM
-      } else if(est == "TAV") {
-        data_list[[folder]] <- model$TAV
+      } else if(est == "TAC") {
+        data_list[[folder]] <- model$TAC
       } else {
-        stop("Invalid estimate type. Use 'UVC', 'UVPM', or 'TAV'.")
+        stop("Invalid estimate type. Use 'UVC', 'UVPM', or 'TAC'.")
       }
       
     }
@@ -1444,18 +1444,18 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
 }
 
 
-AttibuteCompare <- function(g1,g2,modelloc,av = TRUE)
+AttributeCICompare <- function(g1,g2,modelloc,av = TRUE)
 {
   # Function that takes in two regions, and checks the THETAPM for both attributes, and sees which regions are display the largest difference between groups, 
   # It then returns both the number, the difference in CI, and the name of the region 
   
-  if(av) {
+  if(!av) {
     warning("Not Supported Yet")
     return()
     }
   else{
-    g1name <- paste('Average_',g1,'_TAC.rds')
-  g2name <- paste('Average_',g2,'_TAC.rds')
+    g1name <- paste0('Average_',g1,'_TAC.rds')
+    g2name <- paste0('Average_',g2,'_TAC.rds')
     
     g1data <- readRDS(g1name)
     g2data <- readRDS(g2name)
@@ -1466,8 +1466,9 @@ AttibuteCompare <- function(g1,g2,modelloc,av = TRUE)
     quantile(x, probs = c(0.025, 0.975))
   }
   
-  hi.g1 <- t(apply(g1data, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 168x2 matrix
-  hi.g2 <- t(apply(g2data, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+  hi.g1 <- t(apply(g1data, 2, function(x) quantile(x, probs = c(0.05, 0.95)))) # 90% CI
+  hi.g2 <- t(apply(g2data, 2, function(x) quantile(x, probs = c(0.05, 0.95)))) # 90% CI
+  
   # Determine if they overlap
   Tau <- matrix(0,nrow=84)
   Amy <- matrix(0,nrow=84)
