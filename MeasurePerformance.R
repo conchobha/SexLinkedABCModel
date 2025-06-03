@@ -226,7 +226,7 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   model1 <- data$model
   UVPM1 <- model1$UVPM
   l <- data$sn / 10
-  UVC1 <- model1$UVC[, 90:100]
+  UVC1 <- model1$UVC[4500:7500, 90:100]
   }else{
     UVC_name <- paste0("Average_",group,"_UVC.rds")
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
@@ -240,9 +240,7 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   # model1$TAC
   
   mc1 <- mcmc(data = UVC1, start = 1, end = nrow(UVC1), thin = 1)
-
-  setwd(filedir)
-
+  setwd(outputdir)
   pdf(file = paste0(group, "_Traceplot.pdf"))
   traceplot(mc1, ylab = "Covariance Estimate")
   dev.off()
@@ -744,6 +742,7 @@ findEdge <- function(number, filename = "iADRC_Struture_Diffusion_Tau_Abeta_84RO
         df <- read_excel(filename, sheet = 2)
       })
     })
+    # make a 2d matrix to hold the results
 
     # Go to the Index
     result <- df$ICV[df$`...5` == number]
@@ -1450,7 +1449,7 @@ AttibuteCompare <- function(g1,g2,modelloc,av = TRUE)
     }
   else{
     g1name <- paste('Average_',g1,'_TAC.rds')
-    g2name <- paste('Average_',g2,'_TAC.rds')
+  g2name <- paste('Average_',g2,'_TAC.rds')
     
     g1data <- readRDS(g1name)
     g2data <- readRDS(g2name)
@@ -1503,3 +1502,11 @@ AttibuteCompare <- function(g1,g2,modelloc,av = TRUE)
 
 
 
+GetRegion <- function(indices, atlasloc = "~/Documents/Work/ModelFiles/finalAtlas.rds") {
+  # This function will take a vector of indices and return a 2-column matrix: index and region name
+  load(atlasloc)
+  # Sort final df by the lobe
+  region_names <-final_df$ROI[indices]
+  result <- cbind(Index = indices, Region = region_names)
+  return(result)
+}
