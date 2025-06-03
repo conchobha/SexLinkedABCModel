@@ -1084,6 +1084,8 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
         data_list[[folder]] <- model$UVC
       } else if (est == "UVPM") {
         data_list[[folder]] <- model$UVPM
+      } else if (est == "THETAPM") {
+        data_list[[folder]] <- model$THETAPM
       } else if(est == "TAC") {
         data_list[[folder]] <- model$TAC
       } else {
@@ -1555,7 +1557,7 @@ AttributeAbsCompare <- function(g1,g2,modelloc, av = TRUE) # Measures the Abs di
   print(top_Amy)
 }
 
-GetRegion <- function(indices, atlasloc = "~/Documents/Work/ModelFiles/finalAtlas.rds") {
+GetRegion <- function(indices, atlasloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds") {
   # This function will take a vector of indices and return a 2-column matrix: index and region name
   load(atlasloc)
   # Sort final df by the lobe
