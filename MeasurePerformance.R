@@ -1058,6 +1058,7 @@ CI_analysis <- function(g1 = "fcn", g2 = "fmci",
 # Function to search through every folder in a DIR, find a given file, then return the average UVC or UVPM for that group
 
 MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", est = "UVC", group = "fcn", metric = 'OD') {
+  #' @param est defines the type of estimate to use, either UVC,UVPM, or TAV
   # Load the files
   setwd(location)
   # Get a list of all the folders in the directory
@@ -1083,7 +1084,12 @@ MakeAverage <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/out
         data_list[[folder]] <- model$UVC
       } else if (est == "UVPM") {
         data_list[[folder]] <- model$UVPM
+      } else if(est == "TAV") {
+        data_list[[folder]] <- model$TAV
+      } else {
+        stop("Invalid estimate type. Use 'UVC', 'UVPM', or 'TAV'.")
       }
+      
     }
   }
 
@@ -1171,7 +1177,7 @@ for(g in grouplist){
   saveRDS(avg_corr, paste0(location, "/Average_", group, "_",metric,"_Corr.rds"))
 }
 
-CI_analysis(av = TRUE)
+
 
 grouplist <- list("fcn", "fmci", 
                   "fscd", "mcn", "mmci", "mscd"
@@ -1493,9 +1499,17 @@ AttibuteCompare <- function(g1,g2,modelloc,av = TRUE)
     
   }
   
-  # if more then 10 do, say so and print the first 10
-  # get the count in each matrix of the number of -1s, and 1s
-  # if less then 10 regions, print the ones that do
+  #current matrices now have the values of 1, -1, or 0 for each 84 regions
+
+  # get the count of -1's and 1's for each matrix
+  TauCount <- sum(Tau == 1)
+  AmyCount <- sum(Amy == 1)
+  TauCountNeg <- sum(Tau == -1)
+  AmyCountNeg <- sum(Amy == -1)
+  # Print the results
+  print(paste("For group ", g1, " vs ", g2))
+  print(paste("Tau: ", TauCount, " regions are larger in ", g2, " and ", TauCountNeg, " regions are larger in ", g1))
+  print(paste("Amy: ", AmyCount, " regions are larger in ", g2, " and ", AmyCountNeg, " regions are larger in ", g1))
   
 }
 
