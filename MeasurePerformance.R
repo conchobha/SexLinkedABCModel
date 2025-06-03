@@ -1515,7 +1515,45 @@ AttributeCICompare <- function(g1,g2,modelloc,av = TRUE) # CI's seem to be too w
 }
 
 
+AttributeAbsCompare <- function(g1,g2,modelloc, av = TRUE) # Measures the Abs differences of attributes, and returns the 5 most signifigant regions
+{
+  if(!av) {
+    warning("Not Supported Yet")
+    return()
+    }
+  else{
+    g1name <- paste0('Average_',g1,'_THETAPM.rds')
+    g2name <- paste0('Average_',g2,'_THETAPM.rds')
+    
+    g1data <- readRDS(g1name)
+    g2data <- readRDS(g2name)
+  }
+  
+  matrix <- abs(g1data - g2data) # Get the absolute difference between the two groups
+  # Get the top 5 regions with the largest absolute difference in each column
 
+  Tau <- matrix[,1] # Get the Tau columns
+  Amy <- matrix[,2] # Get the Amy columns
+  # Add a column for the region index number
+  Tau <- cbind(Region = 1:84, Tau)
+  Amy <- cbind(Region = 1:84, Amy)
+  
+  # sort the Tau and Amy matrices by the absolute difference in descending order
+  Tau <- Tau[order(abs(Tau[,2]), decreasing = TRUE), ]
+  Amy <- Amy[order(abs(Amy[,2]), decreasing = TRUE), ]
+  # Get the top 5 regions for each column
+  top_Tau <- Tau[1:5, ]
+  top_Amy <- Amy[1:5, ]
+  # replace the region index with the region name using the GetRegion function
+  top_Tau <- GetRegion(top_Tau[,1])
+  top_Amy <- GetRegion(top_Amy[,1])
+  # Print the results
+  print(paste("For group ", g1, " vs ", g2))
+  print("Top 5 regions for Tau:")
+  print(top_Tau)
+  print("Top 5 regions for Amy:")
+  print(top_Amy)
+}
 
 GetRegion <- function(indices, atlasloc = "~/Documents/Work/ModelFiles/finalAtlas.rds") {
   # This function will take a vector of indices and return a 2-column matrix: index and region name
