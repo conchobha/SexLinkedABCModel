@@ -1444,7 +1444,7 @@ for (g1_idx in 1:(length(grouplist) - 1)) {
 }
 
 
-AttributeCICompare <- function(g1,g2,modelloc,av = TRUE)
+AttributeCICompare <- function(g1,g2,modelloc,av = TRUE) # CI's seem to be too wide to gleam any insights
 {
   # Function that takes in two regions, and checks the THETAPM for both attributes, and sees which regions are display the largest difference between groups, 
   # It then returns both the number, the difference in CI, and the name of the region 
