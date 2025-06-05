@@ -1222,156 +1222,89 @@ for (g in grouplist) {
 
 
 
-
-
-loc_matrix <- matrix(0, nrow = 84, ncol = 84)
-
-# Start filling the upper triangle downwards, column by column
-index <- 1
-for (j in 2:84) { # Start from the second column
-  for (i in 1:(j - 1)) { # Only fill below the diagonal
-    loc_matrix[i, j] <- index
-    index <- index + 1
-  }
-}
-
-
-
 # Function to Print the top five regions in terms of differences between groups
-difference <- function(g1, g2, modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", av = TRUE, res = 0) {
-  reorder <- function(matrix_to_reorder) {
-    # Load the required data
-    load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
+difference <- function(g1, g2, modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/", av = TRUE,atlasloc) {
+  #We are going to find the difference between two groups, and print the top five regions in terms of difference
+  #' @param g1 defines the first group
+  #' @param g2 defines the second group
+  #' @param modelloc defines the location of the models
+  #' @param av defines if we are using the average data or not
+# Load the averaged Data
+
+#Determine the Abs Difference
 
 
-    # Sort the data frame by the 'LOBE' column
-    sorted_df <- final_df[order(final_df$LOBE), ]
+#Add the difference to a dataframe that also holds the Region name
 
-    # Reorder the rows based on the sorted indices
-    sorted_indices <- sorted_df$row_number
-
-    # Reorder both rows and columns of the matrix
-    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
-
-    return(reordered_mat)
-  }
-  setwd(modelloc)
-  # Load the UVPM data for each group
+# Print the top 10 regions in terms of difference
+GetRegion <- function(indices, atlasloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds") {
+  # This function will take a vector of indices and return a 2-column matrix: index and region name
+  load(atlasloc)
+  # Sort final df by the lobe
+  region_names <-final_df$ROI[indices]
+  result <- cbind(Index = indices, Region = region_names)
+  return(result)
+}
+  
   if (av) {
-    g1name <- paste0("Average_", g1, "_UVPM.rds")
-    g2name <- paste0("Average_", g2, "_UVPM.rds")
-
-    g1data <- readRDS(g1name)
-    g2data <- readRDS(g2name)
-
-    # reorder the matrices and check the lobes
-    g1data <- reorder(g1data)
-    g2data <- reorder(g2data)
+    # Load the average data
+    setwd(modelloc)
+    model1name <- paste0("Average_", g1, "_UVPM.rds")
+    model2name <- paste0("Average_", g2, "_UVPM.rds")
+    UVC1 <- readRDS(model1name)
+    UVC2 <- readRDS(model2name)
   } else {
-    warning("Non-Average Data not supported yet")
-    return()
+    # Load the individual data
+    setwd(modelloc)
+    model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
+    model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
+    model1 <- readRDS(model1name)
+    model2 <- readRDS(model2name)
+    UVC1 <- model1$model$UVPM
+    UVC2 <- model2$model$UVPM
   }
+  
+  # Calculate the absolute difference
+  abs_diff <- abs(UVC1 - UVC2)
 
-  lobe_info <- list(
-    list(name = "Cingulate", range = c(1, 8)),
-    list(name = "Frontal", range = c(9, 30)),
-    list(name = "Insular", range = c(31, 32)),
-    list(name = "Occipital", range = c(33, 40)),
-    list(name = "Parietal", range = c(41, 50)),
-    list(name = "Subcortical", range = c(51, 64)),
-    list(name = "Temporal", range = c(65, 82))
+  # set the lower tri to -1
+  abs_diff[lower.tri(abs_diff)] <- -1 # Set the lower triangle to -1 to ignore it in the results
+  # load the atlas data
+  
+  # Create a data frame to hold the differences and region name 1 and 2
+  # turn the abs_diff into a into a list that holds 3 values, the index(x and y) in which it is stored, and the difference value 
+  # Create a data frame to hold Region 1, Region 2, and the difference value
+  diff_df <- data.frame(
+    Region1 = integer(),
+    Region2 = integer(),
+    Difference = numeric()
   )
-  # List to hold results, we want the top five differences in each lobe
-  lobe_results <- list(
-    list(name = "Cingulate", regions = list()),
-    list(name = "Frontal", regions = list()),
-    list(name = "Insular", regions = list()),
-    list(name = "Occipital", regions = list()),
-    list(name = "Parietal", regions = list()),
-    list(name = "Subcortical", regions = list()),
-    list(name = "Temporal", regions = list())
-  )
-  pos_result <- g1data - g2data
-  neg_result <- g2data - g1data
-  abs_result <- abs(g1data - g2data)
-  # find the top 10 combinations
-  if (res == 1) {
-    result_matrix <- pos_result
-  } else if (res == -1) {
-    result_matrix <- neg_result
-  } else {
-    result_matrix <- abs_result
-  }
-  # Parse the data
-  for (lobe in lobe_info) {
-    # Get the range
-    range <- lobe$range
-    # Get the name of the lobe
-    name <- lobe$name
-    # Create an empty list to store the regions
-    regions <- list()
-    # Parse the data
-    for (i in range[1]:range[2]) {
-      for (j in range[1]:range[2]) {
-        # Get the index
-        n <- result_matrix[i, j]
-        # append the n, and index into the result list
-        regions <- append(regions, list(c(n, i, j)))
-      }
-    }
-    # Sort the regions by the first value
-    regions <- regions[order(sapply(regions, function(x) x[1]), decreasing = TRUE)]
-    # Add the top five regions to the lobe_results list
-    lobe_results[[which(sapply(lobe_results, function(x) x$name) == name)]]$regions <- regions[1:5]
-  }
-
-  # instead of index, we should get the connection region names
-  load("/N/u/conlcorn/BigRed200/SexLinkedProject/data/finalAtlas.rds")
-  # sort final df by the lobe
-  sorted_df <- final_df[order(final_df$LOBE), ]
-
-  for (lobe in lobe_results) {
-    for (connect in lobe$regions) {
-      # Get the connection region names
-      n <- connect[1]
-      i <- connect[2]
-      j <- connect[3]
-      # Get the region names
-      # use the row number of the sorted df to get the region names
-      region1 <- sorted_df$ROI[i]
-      region2 <- sorted_df$ROI[j]
-      # replace the data in the lobe_results list with the region names
-      connect <- c(n, region1, region2)
+  for (i in 1:nrow(abs_diff)) {
+    for (j in 1:ncol(abs_diff)) {
+      if (abs_diff[i, j] == -1) next # Skip the lower triangle
+      diff_df <- rbind(diff_df, data.frame(
+        Region1 = i,
+        Region2 = j,
+        Difference = abs_diff[i, j]
+      ))
     }
   }
+  regionlookup <- GetRegion(1:84, atlasloc = atlasloc) # we can refrence this value to get the region name
+  # Convert the list to a data frame
+  regionlookup <- as.data.frame(regionlookup)
+  #take the number stored in the first two values, and replace them with the region name from the lookup table
+  diff_df$Region1 <- regionlookup$Region[match(diff_df$Region1, regionlookup$Index)]
+  diff_df$Region2 <- regionlookup$Region[match(diff_df$Region2, regionlookup$Index)]
 
-  # Print the results
-  print(lapply(lobe_results, function(x) x$name))
-  print(lapply(lobe_results, function(x) x$regions))
+  #print the top 5 regions in terms of difference
+  # sort by the difference value
+  diff_df <- diff_df[order(-diff_df$Difference), ]
+  top_regions <- head(diff_df, 5)
+  print(paste("Top 5 regions in terms of difference between", g1, "and", g2))
+  print(top_regions)
+
 }
 
-
-
-Heatmap(g1 = 'fcn',g2 = 'fmci', 
-        av = TRUE,
-        modeldir = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore" , 
-        outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final", 
-        order = TRUE)
-
-grouplist <- list("fcn", "fmci", 
-                  "fscd", "mcn", "mmci", "mscd")
-
-for (g1_idx in 1:(length(grouplist) - 1)) {
-  for (g2_idx in (g1_idx + 1):length(grouplist)) {
-    g1 <- grouplist[g1_idx]
-    g2 <- grouplist[g2_idx]
-    Heatmap(g1 = g1,g2 = g2, 
-            av = TRUE,
-            modeldir = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore" , 
-            outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final", 
-            order = TRUE)
-  }
-}
 
 avAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLinkedProject/FinalModels/OD")
 {
@@ -1564,4 +1497,158 @@ GetRegion <- function(indices, atlasloc = "/N/u/conlcorn/BigRed200/SexLinkedProj
   region_names <-final_df$ROI[indices]
   result <- cbind(Index = indices, Region = region_names)
   return(result)
+}
+
+
+LobebarPlot <- function(g1 = 'fcn',g2 = 'fmci', modelloc, outputloc,atlas, av = TRUE){
+# Finds the aboslute differences in the estimated connectivty between each group, broken
+# up by lobe, and then plots the differences in a bar plot
+reorder <- function(matrix_to_reorder, atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds' ) { #function to reorder the matrix based on a given atlas
+    # Load the required data
+    load(atlasloc)
+
+
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+
+    return(reordered_mat)
+  }
+setwd(modelloc)
+  if(!av) {
+    warning("Not Supported Yet")
+    return()
+  }
+  else{
+    g1name <- paste0('Average_',g1,'_UVPM.rds')
+    g2name <- paste0('Average_',g2,'_UVPM.rds')
+    
+    g1data <- readRDS(g1name)
+    g2data <- readRDS(g2name)
+  }
+  
+  # Generate the absolute differences
+  abs_diff <- abs(g1data - g2data)
+  # Reorder the matrix to match the final atlas order
+  matrixreordered <- reorder(abs_diff,atlas)
+  abs_diff <- matrixreordered 
+  # Define lobe ranges
+  lobe_info <- list(
+    list(name = "Cingulate", range = c(1, 8)),
+    list(name = "Frontal", range = c(9, 30)),
+    list(name = "Insular", range = c(31, 32)),
+    list(name = "Occipital", range = c(33, 40)),
+    list(name = "Parietal", range = c(41, 50)),
+    list(name = "Subcortical", range = c(51, 64)),
+    list(name = "Temporal", range = c(65, 82))
+  )
+  
+  # Initialize a vector to store the differences for each lobe
+  lobe_diffs <- numeric(length(lobe_info))
+  
+  # Calculate the absolute differences for each lobe
+  for (i in seq_along(lobe_info)) {
+    lobe <- lobe_info[[i]]
+    range <- lobe$range
+    lobe_diffs[i] <- sum(matrixreordered[range[1]:range[2], range[1]:range[2]])
+  }
+  
+  # Create a bar plot of the differences
+  barplot(lobe_diffs,
+          names.arg = sapply(lobe_info, function(x) x$name),
+          main = paste("Absolute Differences in Connectivity\nbetween", g1, "and", g2),
+          ylab = "Absolute Difference",
+          col = "lightblue",
+          las = 2)
+  
+  # Save the plot
+  if (!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+  setwd(outputloc)
+  
+  fname <- paste0(g1, "_vs_", g2, "_lobe_differences.pdf")
+  
+  pdf(file = fname, width = 10, height = 6)
+  dev.off() # Close the PDF device to save the plot
+}
+
+
+brainplotregiondifferences <- function (g1 = 'fcn',g2 = 'fmci', modelloc, outputloc,atlas, av = TRUE)
+{
+  # take a sum of the absolute differences in the estimated connectivty between each group, broken
+  # up by brain region, and then plots the differences in a brain plot using ggseg
+
+  # trim the matrix to only the upper triangle
+trim_upper_triangle <- function(matrix) {
+  # Create a copy of the matrix
+  trimmed_matrix <- matrix
+  
+  # Set the lower triangle to NA
+  trimmed_matrix[lower.tri(trimmed_matrix)] <- NA
+  
+  return(trimmed_matrix)
+}
+
+setwd(modelloc)
+  if(!av) {
+    warning("Not Supported Yet")
+    return()
+  }
+  else{
+    g1name <- paste0('Average_',g1,'_UVPM.rds')
+    g2name <- paste0('Average_',g2,'_UVPM.rds')
+    
+    g1data <- readRDS(g1name)
+    g2data <- readRDS(g2name)
+  }
+  
+  # Generate the absolute differences
+  abs_diff <- abs(g1data - g2data)
+  m <- trim_upper_triangle(abs_diff) # Trim the matrix to only the upper triangle
+  # for each row, find the sum of the absolute differences, save them in a df that holds
+    # the name of the region, and the sum of the absolute differences, and its index number
+  region_sums <- data.frame(Index = integer(0), Region = character(0), Sum = numeric(0))
+  # Load the atlas data
+  #remember, region 36-49 are the subcortical regions, so we will ignore them when we plot
+  load(atlas)
+  # fill the index and region columns
+  for (i in 1:84) {
+    region_name <- final_df$ROI[i] # Get the region name
+    region_sum <- sum(m[i, ], na.rm = TRUE) # Get the sum of the absolute differences for that region
+    # Append to the data frame
+    region_sums <- rbind(region_sums, data.frame(Index = i, Region = region_name, Sum = region_sum))
+  }
+
+  # Filter out the subcortical regions (36-49)
+  region_sums <- region_sums[!region_sums$Index %in% 36:49, ]
+  # also remove Index 35 and 84
+  region_sums <- region_sums[!region_sums$Index %in% c(35, 84), ]
+  # we need to take this df to then plot the value in ggseg3d for the dk atlas
+  library(ggseg3d)
+  library(ggplot2)
+  library(dplyr)
+  library(tidyr)
+  # Create a ggseg3d plot
+  # change all _ in regions to -
+  region_sums$Region <- gsub("-", "_", region_sums$Region)
+  # Merge region_sums with dk_3d region names to ensure correct mapping
+  someData <- dk_3d %>%
+    #filter(surf == "inflated") %>%
+    unnest(ggseg_3d) %>%
+    ungroup() %>%
+    select(label) %>%
+    na.omit() %>%
+    left_join(region_sums, by = c("label" = "Region")) %>%
+    mutate(Sum = ifelse(is.na(Sum), 0, Sum))
+     # Set missing regions to 0
+  # Now we can plot the data
+
+  ggseg3d(.data = someData,
+          atlas = dk_3d,
+          colour = "Sum", text = "Sum") 
+  
 }
