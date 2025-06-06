@@ -1270,28 +1270,88 @@ GetRegion <- function(indices, atlasloc = "/N/u/conlcorn/BigRed200/SexLinkedProj
   # set the lower tri to -1
   abs_diff[lower.tri(abs_diff)] <- -1 # Set the lower triangle to -1 to ignore it in the results
   # load the atlas data
+
+
+
+
+  if(av){
+    model1name <- paste0("Average_", g1, "_UVC.rds")
+    model2name <- paste0("Average_", g2, "_UVC.rds")
+    UVC1_1 <- readRDS(model1name)
+    UVC2_1 <- readRDS(model2name)
+  }else{
+    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata")
+    data <- readRDS(g1name)
+    model <- data$model
+    UVC1_1 <- model$UVC
+    
+    g2name <- paste0("ADNI_",metric,"_", g2, "_mean_2e+05_1000.rdata")
+    data <- readRDS(g2name)
+    model <- data$model
+    UVC2_1<- model$UVC
+  }
+
+    UVC  <- UVC1_1 - UVC2_1 # This is the difference between the two groups, we will use this to find the regions that are significantly different
+
+    CI <- t(apply(UVC, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+
+    loc_matrix <- matrix(0, nrow = 84, ncol = 84)
   
+  # Start filling the upper triangle downwards, column by column
+    index <- 1
+    for (j in 2:84) { # Start from the second column
+      for (i in 1:(j - 1)) { # Only fill below the diagonal
+        loc_matrix[i, j] <- index
+        index <- index + 1
+     }
+    }
+
+    # loc_matrix is now a matrix that holds the index that can be used to match the CI's to the regions
+    CIMatrix <- matrix(vector("list", 84 * 84), nrow = 84, ncol = 84)
+    
+    for (i in 1:84) {
+      for (j in 1:84) {
+        n <- loc_matrix[i, j]
+        if(n == 0) next
+        CIMatrix[[i, j]] <- unname(c(CI[n, 1], CI[n, 2]))  # Store vector in a cell
+      }
+    }
+    
   # Create a data frame to hold the differences and region name 1 and 2
   # turn the abs_diff into a into a list that holds 3 values, the index(x and y) in which it is stored, and the difference value 
   # Create a data frame to hold Region 1, Region 2, and the difference value
-  diff_df <- data.frame(
-    Region1 = integer(),
-    Region2 = integer(),
-    Difference = numeric()
-  )
-  for (i in 1:nrow(abs_diff)) {
-    for (j in 1:ncol(abs_diff)) {
-      if (abs_diff[i, j] == -1) next # Skip the lower triangle
-      diff_df <- rbind(diff_df, data.frame(
-        Region1 = i,
-        Region2 = j,
-        Difference = abs_diff[i, j]
-      ))
+    diff_df <- data.frame()
+    
+    for (i in 1:nrow(abs_diff)) {
+      for (j in 1:ncol(abs_diff)) {
+        if (abs_diff[i, j] == -1) next
+        
+        ci_vals <- CIMatrix[[i, j]]
+        
+        # Skip if no CI was stored
+        if (is.null(ci_vals)) next
+        
+        diff_df <- rbind(diff_df, data.frame(
+          Region1 = i,
+          Region2 = j,
+          Difference = abs_diff[i, j],
+          CI_low = ci_vals[1],
+          CI_high = ci_vals[2]
+        ))
+      }
     }
-  }
+
+# We also want to compute the CI's for these regions, so we can see if they are significantly different as well as numerically different
+# load the UVC data for both groups
+
+ 
+
   regionlookup <- GetRegion(1:84, atlasloc = atlasloc) # we can refrence this value to get the region name
   # Convert the list to a data frame
   regionlookup <- as.data.frame(regionlookup)
+
+
+
   #take the number stored in the first two values, and replace them with the region name from the lookup table
   diff_df$Region1 <- regionlookup$Region[match(diff_df$Region1, regionlookup$Index)]
   diff_df$Region2 <- regionlookup$Region[match(diff_df$Region2, regionlookup$Index)]
