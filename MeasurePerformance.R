@@ -1335,8 +1335,8 @@ GetRegion <- function(indices, atlasloc = "/N/u/conlcorn/BigRed200/SexLinkedProj
           Region1 = i,
           Region2 = j,
           Difference = abs_diff[i, j],
-          CI_low = ci_vals[1],
-          CI_high = ci_vals[2]
+          CI_low = round(ci_vals[1],4),
+          CI_high = round(ci_vals[2],4)
         ))
       }
     }
@@ -1637,11 +1637,17 @@ setwd(modelloc)
 }
 
 
-brainplotregiondifferences <- function (g1 = 'fcn',g2 = 'fmci', modelloc, outputloc,atlas, av = TRUE)
+brainplotregiondifferences <- function (g1 = 'fcn',g2 = 'fmci', modelloc, outputloc,atlas, av = TRUE, D = FALSE)
 {
   # take a sum of the absolute differences in the estimated connectivty between each group, broken
   # up by brain region, and then plots the differences in a brain plot using ggseg
-
+  #' @param g1 defines the first group
+  #' @param g2 defines the second group
+  #' @param modelloc defines the location of the models
+  #' @param outputloc defines the location to save the plot
+  #' @param atlas defines the location of the atlas file
+  #' @param av defines if we are using the average data or not
+  #' @param D defines if we are using ggseg3d or ggseg (2D or 3D plot)
   # trim the matrix to only the upper triangle
 trim_upper_triangle <- function(matrix) {
   # Create a copy of the matrix
@@ -1688,6 +1694,14 @@ setwd(modelloc)
   # also remove Index 35 and 84
   region_sums <- region_sums[!region_sums$Index %in% c(35, 84), ]
   # we need to take this df to then plot the value in ggseg3d for the dk atlas
+  #set wd to the output location
+  if (!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+  setwd(outputloc)
+
+  # open a PDF device to save the plot
+  fname <- paste0(g1, "_vs_", g2, "_region_differences.pdf")
+  pdf(file = fname, width = 10, height = 6)
+  if(D){
   library(ggseg3d)
   library(ggplot2)
   library(dplyr)
@@ -1697,7 +1711,7 @@ setwd(modelloc)
   region_sums$Region <- gsub("-", "_", region_sums$Region)
   # Merge region_sums with dk_3d region names to ensure correct mapping
   someData <- dk_3d %>%
-    #filter(surf == "inflated") %>%
+    #filter(surf == "white") %>%
     unnest(ggseg_3d) %>%
     ungroup() %>%
     select(label) %>%
@@ -1708,7 +1722,83 @@ setwd(modelloc)
   # Now we can plot the data
 
   ggseg3d(.data = someData,
-          atlas = dk_3d,
+          atlas = dk_3d, hemisphere = 'left',
           colour = "Sum", text = "Sum") 
+  }else{
+    # if we are ploting the 2d version, we will use ggseg
+    library(ggseg)
+    library(ggplot2)
+    library(dplyr)
+    library(tidyr)
+    region_sums$Region <- gsub("-", "_", region_sums$Region)
+
+   # Adjust legend position if needed
+  someData = tibble(label = region_sums$Region, p = region_sums$Sum)
+  
+    # plot the new atlas 
+  newAtlas = dk %>% 
+    as_tibble() %>% 
+    left_join(someData) %>% 
+    as_brain_atlas()
+  
+  ggplot() +
+    geom_brain(atlas = newAtlas, 
+               mapping = aes(fill=p), 
+               position = position_brain(hemi ~ side)
+    )
+  }
+  dev.off() # Close the PDF device to save the plot
   
 }
+
+COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD', outputloc = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD/COVAnalysis', av = TRUE)
+{
+  # Investigates the COV of the estimated connectivity in the Group, and outputs the 95% CI for each Metric
+  #' @param g defines the group to analyze
+  #' @param metric defines the metric to analyze, either 'OD' or 'DM1'
+  #' @param modelloc defines the location of the models
+  #' @param outputloc defines the location to save the results
+  #' @param av defines if we are using the average data or not
+  #' @return a data frame with the COV for each region, and the 95% CI for each region
+  #' 
+  if(!av) {
+    warning("Not Supported Yet")
+    return()
+  }
+  else{
+    gname <- paste0('Average_',g,'_COV.rds')
+    
+    gdata <- readRDS(gname)
+  }
+
+  # we now have a 20,000 x 2 matrix, where the first column is the Tau, and the second column is the Amy
+  # We will calculate the 95% CI for each region, and then return a data frame with the COV for each region, and the 95% CI for each region
+  # Calculate the 95% CI for each region
+  CI <- t(apply(gdata, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+
+  # we should now have a 2 x 2 matrix, where the first row is the lower bound, and the second row is the upper bound
+  #Print the results
+  print(paste("For group ", g))
+  print("95% CI for Tau:")
+  print(round(CI[1, ], 4))
+  print("95% CI for Amy:")
+  print(round(CI[2, ], 4))
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
