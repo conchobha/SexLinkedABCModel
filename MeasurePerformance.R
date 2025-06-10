@@ -1760,7 +1760,7 @@ COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModel
   #' @param outputloc defines the location to save the results
   #' @param av defines if we are using the average data or not
   #' @return a data frame with the COV for each region, and the 95% CI for each region
-  #' 
+  #' Current Issue: The CI for our OD metric is too wide to gleam any insights
   if(!av) {
     warning("Not Supported Yet")
     return()
