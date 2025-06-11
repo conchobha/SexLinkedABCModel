@@ -1790,12 +1790,203 @@ COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModel
 
 
 
+# Lobe specific Heatmap function 
+LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
+{
+  # takes in two groups, and makes the four heatmaps we are planning to use for our overall lobe specific analysis 
+  #' @param g1 defines the first group
+  #' @param g2 defines the second group
+  #' @param lobe defines the lobe to analyze, either 'Cingulate', 'Frontal', 'Insular', 'Occipital', 'Parietal', 'Subcortical', or 'Temporal'
+  #' @param modelloc defines the location of the models
+  #' @param atlasloc defines the location of the atlas file
+  #' @param outputloc defines the location to save the results
+  #' @param av defines if we are using the average data or not
+
+  #We plan for a Raw UVPM differences and CI differences 
+  library(corrplot)
+
+  if(!av) {
+    warning("Not Supported Yet")
+    return()
+  }
+  else{
+    g1name <- paste0('Average_',g1,'_UVPM.rds')
+    g2name <- paste0('Average_',g2,'_UVPM.rds')
+    
+    g1UVPM <- readRDS(g1name)
+    g2UVPM <- readRDS(g2name)
 
 
+    g1UVC <- readRDS(paste0('Average_',g1,'_UVC.rds'))
+    g2UVC <- readRDS(paste0('Average_',g2,'_UVC.rds'))
+  }
+  # best way to do this is to do the operations to all of the data, then just subset the data to the lobe we want to analyze, since most of the code we have already written works off the whole set 
+
+  # Generate the absolute differences
+  abs_diff_UVPM <- g1UVPM - g2UVPM
 
 
+   # Load the required data
+  load(atlasloc)
 
 
+    # Sort the data frame by the 'LOBE' column
+  sorted_df <- final_df[order(final_df$LOBE), ]
+
+    # Reorder the rows based on the sorted indices
+  sorted_indices <- sorted_df$row_number
+
+    # Reorder both rows and columns of the matri
+  # We now need to filter based on our lobe of interest
+  # since we pulled the final_df out, it's still in memory, so we can use it to filter the rows and columns of the matrix
+  lobe_indices <- which(final_df$LOBE == lobe) # Get the indices of the lobe we want to analyze
+  lobe_matrix <- abs_diff_UVPM[lobe_indices, lobe_indices] # Subset the matrix to only the lobe of interest
+
+  # In theory, we now have a matrix that holds the absolute differences in the UVPM for the lobe of interest
+
+  # We also need to get the name of each region in the lobe, so we can label the heatmap
+  lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  rownames(lobe_matrix) <- lobe_region_names
+  colnames(lobe_matrix) <- lobe_region_names
+  # Create a heatmap of the absolute differences in UVPM for the lobe of interest, using the lobe_region_names as the for each row/column
+  # Define a custom color palette: cyan for negative, white for zero, orange for positive
+  custom_palette <- colorRampPalette(c("#1F77B4", "#FFFFFF", "#FF7F0E"))(100)
+  # Plot 1: Heatmap of differences
+  #---------------------------------------------------------------------------------------------- 
+  # Plot the heatmap with no numbers, axis titles only,
+  # and vertical legend on the right
+  
+  # Open PDF device with larger margins to fit axis labels
+  if (!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+  setwd(outputloc)
+  fname <- paste0(g1, "_vs_", g2, "_", lobe, "_lobe_heatmap.pdf")
+  pdf(file = fname, width = 10, height = 10) # Increase width/height for more space
+
+  # Adjust plot margins: bottom, left, top, right
+
+  
+  # Flip the y-axis and corresponding labels, set blue for negative and orange for positive, show legend
+  # Create a custom color palette: blue for negative, white for zero, orange for positive
+  custom_palette <- colorRampPalette(c("#1F77B4", "#FFFFFF", "#FF7F0E"))(100)
+  
+  #in the matrix, set the names of the rows and columns to the lobe region name
+  corrplot(
+    lobe_matrix,
+    is.corr = FALSE,  # Set to FALSE since this is not a correlation matrix
+    col = custom_palette,
+    method = "color",  # Use color method for heatmap
+    addgrid.col = "white",  # Add grid lines in White
+    tl.col = "black",  # Text label color
+    tl.srt = 45,  # Rotate text labels for better readability
+    tl.cex = 1.3,  # Text label size
+    cl.cex = 1.3,  # Color legend size
+  )
+  dev.off()
+# Part 2: Get the top five most significant connections within the lobe
+# -----------------------------------------------------------------------
+
+# sort the lobe_matrix by the absolute difference, but keep track if it's positive or negative, we then want to print the top five most significant connections
+  # We will use the absolute value of the differences to sort, but we will keep track of the sign
+  lobe_matrix_abs <- abs(lobe_matrix) # Get the absolute values of the differences
+  lobe_matrix_sign <- sign(lobe_matrix) # Get the sign of the differences
+  
+  # Convert to a data frame for easier manipulation
+  lobe_df <- as.data.frame(as.table(lobe_matrix_abs))
+  lobe_df$Sign <- as.vector(lobe_matrix_sign) # Add the sign column
+  
+  # Sort by absolute difference in descending order and get the top 5
+  top_connections <- lobe_df[order(-lobe_df$Freq), ][1:5, ]
+  # change top connections to multiply the sign by the absolute difference, and remove the sign column
+  top_connections$Significant_Connection <- top_connections$Freq * top_connections$Sign
+  top_connections <- top_connections[, c("Var1", "Var2", "Significant_Connection")]
+  # Rename the columns for clarity
+  colnames(top_connections) <- c("Region1", "Region2", "Significant_Connection")
+  # Print the top connections with their signs
+  print("Top 5 most significant connections within the lobe:")
+  print(top_connections) 
+
+# Part 3: Make the Signifigance Heatmap
+# -----------------------------------------------------------------------
+# generate the 95% CI for the UVC DATA
+  hi.g1 <- t(apply(g1UVC, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # 95% CI
+  hi.g2 <- t(apply(g2UVC, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # 95% CI
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+  index <- 1
+  for (j in 2:84) { # Start from the second column
+    for (i in 1:(j - 1)) { # Only fill below the diagonal
+      loc_matrix[i, j] <- index
+      index <- index + 1
+    }
+  }
+  
+  # We can use this matrix to pull the proper CI's for each connection, then return the matrix to be made into the heatmap
+  # Use the number stored in the loc_matrix to pull the CI's from the hi.g1 and hi.g2 matrices
+  matrix_data <- matrix(0, nrow = 84, ncol = 84)
+  for (i in 1:84) {
+    for (j in 1:84) {
+      n <- loc_matrix[i, j]
+      if (n == 0) next
+      
+      tmp1 <- hi.g1[n, ]
+      tmp2 <- hi.g2[n, ]
+      if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+        if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+          matrix_data[i, j] <- 1
+        } else if (tmp1[1] >= tmp2[2]) {
+          matrix_data[i, j] <- -1
+        } 
+      }
+    }
+  }
+  # We need to make sure the matrix is symmetric
+  for (i in 1:nrow(matrix_data)) {
+    for (j in 1:ncol(matrix_data)) {
+      if (i != j) {
+        # Check if matrix_data[i, j] is zero but matrix_data[j, i] is non-zero
+        if (matrix_data[i, j] == 0 && matrix_data[j, i] != 0) {
+          matrix_data[i, j] <- matrix_data[j, i]
+        }
+        # Check if matrix_data[j, i] is zero but matrix_data[i, j] is non-zero
+        else if (matrix_data[j, i] == 0 && matrix_data[i, j] != 0) {
+          matrix_data[j, i] <- matrix_data[i, j]
+        }
+      }
+    }
+  }
+  
+  
+    # we then need to reorder using the same method as before, so that the regions are in the correct order
+    lobe_significant_matrix <- matrix_data[lobe_indices, lobe_indices] # Subset the matrix to only the lobe of interest
+    # add the names
+    rownames(lobe_significant_matrix) <- lobe_region_names
+    colnames(lobe_significant_matrix) <- lobe_region_names
+    m <- lobe_significant_matrix
+
+
+    #in the matrix, set the names of the rows and columns to the lobe region name
+    m[m > 1] <- 1
+    m[m < -1] <- -1
+    # Define the color palette: blue for -1, white for 0, orange for 1
+    color_palette <- colorRampPalette(c("#1F77B4", "white", "#FF7F0E"))(200)
+    
+    # Plot the matrix
+    suppressWarnings({
+    corrplot(m,
+             method = "color",
+             col = color_palette,
+             tl.pos = "n",   # Remove axis labels
+             cl.pos = "n",   # Remove color legend
+             is.corr = FALSE,
+             col.lim = c(-1, 1)   # This is important! Map -1 to +1
+    )
+    })
+    dev.off() # Close the PDF device to save the plot
+
+    # we then pull the 
+
+}
 
 
 
