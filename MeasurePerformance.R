@@ -1791,8 +1791,7 @@ COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModel
 
 
 # Lobe specific Heatmap function 
-LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
-{
+LobeHeatmap <- function(g1,g2, lobe, modelloc, atlasloc, outputloc){
   # takes in two groups, and makes the four heatmaps we are planning to use for our overall lobe specific analysis 
   #' @param g1 defines the first group
   #' @param g2 defines the second group
@@ -1805,11 +1804,7 @@ LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
   #We plan for a Raw UVPM differences and CI differences 
   library(corrplot)
 
-  if(!av) {
-    warning("Not Supported Yet")
-    return()
-  }
-  else{
+  setwd(modelloc)
     g1name <- paste0('Average_',g1,'_UVPM.rds')
     g2name <- paste0('Average_',g2,'_UVPM.rds')
     
@@ -1819,7 +1814,15 @@ LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
 
     g1UVC <- readRDS(paste0('Average_',g1,'_UVC.rds'))
     g2UVC <- readRDS(paste0('Average_',g2,'_UVC.rds'))
-  }
+
+    if(g2 == 'fmci') { # We need to limit the MCMC to the stabalized regions(4500-5500)
+      temp <- g2UVC[4500:5500,] 
+      g2UVC <- temp # Set the g2UVC to the temp value
+    }else if(g1 == 'fmci') {
+      temp <- g1UVC[4500:5500,]
+      g1UVC <- temp # Set the g1UVC to the temp value
+    }
+  
   # best way to do this is to do the operations to all of the data, then just subset the data to the lobe we want to analyze, since most of the code we have already written works off the whole set 
 
   # Generate the absolute differences
@@ -1850,7 +1853,7 @@ LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
   colnames(lobe_matrix) <- lobe_region_names
   # Create a heatmap of the absolute differences in UVPM for the lobe of interest, using the lobe_region_names as the for each row/column
   # Define a custom color palette: cyan for negative, white for zero, orange for positive
-  custom_palette <- colorRampPalette(c("#1F77B4", "#FFFFFF", "#FF7F0E"))(100)
+  custom_palette <- colorRampPalette(c("#FF7F0E", "#FFFFFF", "#1F77B4"))(100)
   # Plot 1: Heatmap of differences
   #---------------------------------------------------------------------------------------------- 
   # Plot the heatmap with no numbers, axis titles only,
@@ -1867,7 +1870,7 @@ LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
   
   # Flip the y-axis and corresponding labels, set blue for negative and orange for positive, show legend
   # Create a custom color palette: blue for negative, white for zero, orange for positive
-  custom_palette <- colorRampPalette(c("#1F77B4", "#FFFFFF", "#FF7F0E"))(100)
+  #custom_palette <- colorRampPalette(c("#1F77B4", "#FFFFFF", "#FF7F0E"))(100)
   
   #in the matrix, set the names of the rows and columns to the lobe region name
   corrplot(
@@ -1885,25 +1888,44 @@ LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
 # Part 2: Get the top five most significant connections within the lobe
 # -----------------------------------------------------------------------
 
+
+
+
+
+# Find the indices of the 5 smallest and 5 largest values (excluding diagonal)
+lobe_matrix_no_diag <- lobe_matrix
+diag(lobe_matrix_no_diag) <- NA
+# also set the Lower Tri to NA, so we only get the upper triangle
+lobe_matrix_no_diag[lower.tri(lobe_matrix_no_diag)] <- NA
+
+# Get indices for smallest and largest values
+smallest_idx <- arrayInd(order(lobe_matrix_no_diag, na.last = NA)[1:10], dim(lobe_matrix_no_diag))
+largest_idx <- arrayInd(order(lobe_matrix_no_diag, decreasing = TRUE, na.last = NA)[1:10], dim(lobe_matrix_no_diag))
+
+# Build data frames with region names and difference values
+five_smallest <- data.frame(
+  Region1 = rownames(lobe_matrix)[smallest_idx[, 1]],
+  Region2 = colnames(lobe_matrix)[smallest_idx[, 2]],
+  Difference = lobe_matrix_no_diag[smallest_idx]
+)
+
+five_largest <- data.frame(
+  Region1 = rownames(lobe_matrix)[largest_idx[, 1]],
+  Region2 = colnames(lobe_matrix)[largest_idx[, 2]],
+  Difference = lobe_matrix_no_diag[largest_idx]
+)
+  # Print the results
+  print("Five smallest differences in UVPM within the lobe:")
+  print(five_smallest)
+  print("Five largest differences in UVPM within the lobe:")
+  print(five_largest)
 # sort the lobe_matrix by the absolute difference, but keep track if it's positive or negative, we then want to print the top five most significant connections
   # We will use the absolute value of the differences to sort, but we will keep track of the sign
-  lobe_matrix_abs <- abs(lobe_matrix) # Get the absolute values of the differences
-  lobe_matrix_sign <- sign(lobe_matrix) # Get the sign of the differences
   
-  # Convert to a data frame for easier manipulation
-  lobe_df <- as.data.frame(as.table(lobe_matrix_abs))
-  lobe_df$Sign <- as.vector(lobe_matrix_sign) # Add the sign column
-  
-  # Sort by absolute difference in descending order and get the top 5
-  top_connections <- lobe_df[order(-lobe_df$Freq), ][1:5, ]
-  # change top connections to multiply the sign by the absolute difference, and remove the sign column
-  top_connections$Significant_Connection <- top_connections$Freq * top_connections$Sign
-  top_connections <- top_connections[, c("Var1", "Var2", "Significant_Connection")]
-  # Rename the columns for clarity
-  colnames(top_connections) <- c("Region1", "Region2", "Significant_Connection")
-  # Print the top connections with their signs
-  print("Top 5 most significant connections within the lobe:")
-  print(top_connections) 
+ 
+
+
+
 
 # Part 3: Make the Signifigance Heatmap
 # -----------------------------------------------------------------------
@@ -1970,25 +1992,120 @@ LobeHeatmap(g1,g2, lobe, modelloc, atlasloc, outputloc, av = TRUE)
     m[m < -1] <- -1
     # Define the color palette: blue for -1, white for 0, orange for 1
     color_palette <- colorRampPalette(c("#1F77B4", "white", "#FF7F0E"))(200)
-    
+    # Open PDF device with larger margins to fit axis labels
+    if (!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+    setwd(outputloc)
+    fname <- paste0(g1, "_vs_", g2, "_", lobe, "_lobe_significance_heatmap.pdf")
+    pdf(file = fname, width = 10,height = 10) # Increase width/height for more space
     # Plot the matrix
     suppressWarnings({
-    corrplot(m,
-             method = "color",
-             col = color_palette,
-             tl.pos = "n",   # Remove axis labels
-             cl.pos = "n",   # Remove color legend
-             is.corr = FALSE,
-             col.lim = c(-1, 1)   # This is important! Map -1 to +1
-    )
+      corrplot(
+        m,
+        is.corr = FALSE,  # Set to FALSE since this is not a correlation matrix
+        col = color_palette,
+        method = "color",  # Use color method for heatmap
+        addgrid.col = "white",  # Add grid lines in White
+        tl.col = "black",  # Text label color
+        tl.srt = 45,  # Rotate text labels for better readability
+        tl.cex = 1.3,  # Text label size
+        cl.cex = 1.3,  # Color legend size
+        tl.pos = "t"   # Only show x-axis (top) labels, remove y-axis labels
+      )
+      
+
     })
     dev.off() # Close the PDF device to save the plot
-
-    # we then pull the 
-
 }
 
+RegionMCMC <- function(g1,g2,region1,region2,modeldir,atlasloc,outputdir,av = TRUE,flip = FALSE)
+{
+# function to take in a specific region connection, and return the MCMC data for it, in a density plot
+  #' @param g defines the group to analyze
+  #' @param region1 defines the first region to analyze, can either be a number or a name
+  #' @param region2 defines the second region to analyze, , can either be a number or a name
+  #' @param modeldir defines the location of the models
+  #' @param outputdir defines the location to save the results
+  #' @param av defines if we are using the average data or not
+ 
+# first we need to collect the index from the region names, and if region name is a number, collect the name for plotting purposes
+load(atlasloc)
+# if the regions are numbers, we need to convert them to names
 
+if(region1 == region2) stop("Region1 and Region2 cannot be the same. Please provide two different regions.")
+if(is.numeric(region1)) {
+  region1_name <- final_df$ROI[region1]
+  region2_name <- final_df$ROI[region2]
+} else {
+  region1_name <- region1
+  region2_name <- region2
+  # we need to get the index of the region name in the final_df$ROI vector
+  region1 <- which(final_df$ROI == region1_name)
+  region2 <- which(final_df$ROI == region2_name)
+}
+  
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  index <- 1
+  for (j in 2:84) { # Start from the second column
+    for (i in 1:(j - 1)) { # Only fill below the diagonal
+      loc_matrix[i, j] <- index
+      index <- index + 1
+    }
+  }
+
+# This checks if we called the function with incorrect order, and fixes the error if we did
+if (loc_matrix[region1, region2] == 0){
+  warning("Given Regions is out of bounds. This is most likely due to region2 being <= to region1. Attempting to Rerun with swapped indexs")
+  if(!flip) RegionMCMC(g1=g1,g2 = g2,region1 = region2,region2 = region1,modeldir = modeldir,atlasloc = atlasloc,outputdir = outputdir,av = av,flip = TRUE)
+  stop()
+  
+}else message("Correct Index, Loading Data")
+setwd(modeldir)
+# Load the Data, and parse it to get the MCMC for the specific region connection
+if(!av) {
+  warning("Not Supported Yet")
+  return()
+} else {
+  g1name <- paste0('Average_',g1,'_UVC.rds')
+  g1data <- readRDS(g1name)
+
+  g2name <- paste0('Average_',g2,'_UVC.rds')
+  g2data <- readRDS(g2name)
+
+  #if any of the groups are fmci, we need to limit the MCMC to the stabalized regions(4500-5500)
+  if(g2 == 'fmci') { # We need to limit the MCMC to the stabalized regions(4500-5500)
+    g2data <- g2data[4500:5500, ]
+  }else if(g1 == 'fmci') {
+    g1data <- g1data[4500:5500, ]
+  }
+}
+
+#Best way to parse is to use the loc_matrix we know how to create, and then use the index in there to pull the data from the gdata matrix
+
+
+
+MCMC_Data1 <- g1data[,loc_matrix[region1, region2]] # Get the MCMC data for the specific region connection
+MCMC_Data2 <- g2data[,loc_matrix[region1, region2]] # Get the MCMC data for the specific region connection
+
+#plot this data in a density plot, with the region names as the title
+
+if (!dir.exists(outputdir)) dir.create(outputdir, recursive = TRUE)
+  setwd(outputdir)
+  
+  # Open PDF device to save the plot
+  fname <- paste0(g1, "_",g2, "_", region1_name, "_vs_", region2_name, "_MCMC_density_plot.pdf")
+  pdf(file = fname, width = 10, height = 6) # Increase width/height for more space
+  # Plot the density plot
+  plot(density(MCMC_Data1), 
+       main = paste("MCMC Density Plot for", region1_name, "vs", region2_name),
+       xlab = "MCMC Values", ylab = "Density", 
+       col = "blue", lwd = 2, 
+       xlim = range(c(MCMC_Data1, MCMC_Data2), na.rm = TRUE))
+  lines(density(MCMC_Data2), col = "orange", lwd = 2)
+  legend("topright", legend = c(g1, g2), col = c("blue", "orange"), lwd = 2)
+  
+  dev.off() # Close the PDF device to save the plot
+
+}
 
 
 

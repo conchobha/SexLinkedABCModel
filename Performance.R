@@ -4,7 +4,9 @@
 
 
 #' @title Measure Performance
-#' @description This function measures the performance of a model using various metrics.
+#' @description This function measures the performance of a model using various metrics. Most of these functions are the 
+#'  final versions of the functions used to measure performance in the project. In progress files are in MeasurePerformance.R
+
 
 
 
@@ -161,12 +163,12 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE,
     model <- data$model
     UVC2_1<- model$UVC
   }
-   # if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
-    #else UVC2 <- UVC2_1
-    #if(g1 == 'fmci') UVC1 <- UVC1_1[4500:5500,]
-    #else UVC1 <- UVC1_1
-    UVC1 <- UVC1_1
-    UVC2 <- UVC2_1
+   if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
+    else UVC2 <- UVC2_1
+    if(g1 == 'fmci') UVC1 <- UVC1_1[4500:5500,]
+    else UVC1 <- UVC1_1
+    #UVC1 <- UVC1_1
+    #UVC2 <- UVC2_1
     
 
     hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
@@ -657,4 +659,190 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
 }
 
 
+
+CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",atlasloc , av = TRUE, outputdir, lobe = NA) {
+  #This modified one instead is used to look at specific lobes, if no lobe is supplied, it will look at all lobes
+  library(dplyr)
+  setwd(modeldir) # Set the Directory to where we store the models
+  
+  if (!av) {
+    cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_1e+05_1000.rdata")
+    mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_1e+05_1000.rdata")
+  } else {
+    cn_UVC_name <- paste0("Average_", group, "cn_UVC.rds")
+    cn_UVPM_name <- paste0("Average_", group, "cn_UVPM.rds")
+    mci_UVC_name <- paste0("Average_", group, "mci_UVC.rds")
+    mci_UVPM_name <- paste0("Average_", group, "mci_UVPM.rds")
+  }
+  
+  credible_interval <- function(x) {
+    quantile(x, probs = c(0.025, 0.975))
+  }
+  
+  # New helper: Adjust point estimate if it's outside its CI
+  adjust_point_estimates <- function(estimates, intervals) {
+    adjusted <- mapply(function(est, ci) {
+      lower <- ci[1]
+      upper <- ci[2]
+      if (est < lower || est > upper) {
+        return(mean(ci))
+      } else {
+        return(est)
+      }
+    }, estimates, split(intervals, row(intervals)))
+    return(adjusted)
+  }
+  
+  vec1.tmp <- array(rep(0, 84 * 84), dim = c(84, 84))
+
+  
+#if lobe is NA, we can use the bellow indeces
+if(is.na(lobe)) {
+  vec1.tmp[c(20, 36, 39, 43, 48, 69, 74, 80), ] <- 100
+}else{
+  load(atlasloc)
+  sorted_df <- final_df[order(final_df$LOBE), ]
+  # since we pulled the final_df out, it's still in memory, so we can use it to filter the rows and columns of the matrix
+  lobe_indices <- which(final_df$LOBE == lobe) # Get the indices of the lobe we want to analyze
+  vec1.tmp[lobe_indices,lobe_indices ] <- 100 # Set the rows of the lobe to 100
+}
+  vv <- vec1.tmp[upper.tri(vec1.tmp, diag = FALSE)]
+  index <- which(vv != 0)
+  
+  # we can use this index to only set the ones we want to 100
+  
+  # Load CN data
+  if (!av) {
+    df <- readRDS(cn_name)
+    model1 <- df$model
+    UVC1 <- model1$UVC
+    UVPM <- model1$UVPM
+  } else {
+    UVC1 <- readRDS(cn_UVC_name)
+    UVPM <- readRDS(cn_UVPM_name)
+  }
+  hi.g1 <- t(apply(UVC1, 2, credible_interval))
+  rhi.g1 <- hi.g1[index, ]
+  pm <- UVPM[upper.tri(UVPM, diag = FALSE)]
+  pm1 <- pm[index]
+  order_pm1 <- order(pm1)
+  sorted_pm1 <- pm1[order_pm1]
+  negpe.g1 <- sorted_pm1[sorted_pm1 < 0]
+  pospe.g1 <- sorted_pm1[sorted_pm1 > 0]
+  sorted_rhi.g1 <- rhi.g1[order_pm1, ]
+  negatives.g1 <- sorted_rhi.g1[sorted_pm1 < 0, ]
+  positives.g1 <- sorted_rhi.g1[sorted_pm1 > 0, ]
+  order_pos <- order_pm1[sorted_pm1 > 0]
+  order_neg <- order_pm1[sorted_pm1 < 0]
+  
+  # Load MCI data
+  if (!av) {
+    df <- readRDS(mci_name)
+    model1 <- df$model
+    if(group == 'f') UVC1 <- model1$UVC[4500:7500, ]
+    else UVC1 <- model1$UVC
+    UVPM <- model1$UVPM
+  } else {
+    UV <- readRDS(mci_UVC_name)
+    if (group == 'f') UVC1 <- UV[4500:5500, ]
+    else UVC1 <- UV
+    UVPM <- readRDS(mci_UVPM_name)
+  }
+  
+  hi.g5 <- t(apply(UVC1, 2, credible_interval))
+  rhi.g5 <- hi.g5[index, ]
+  pm <- UVPM[upper.tri(UVPM, diag = FALSE)]
+  pm5 <- pm[index]
+  sorted_pm5 <- pm5[order_pm1]
+  negpe.g5 <- sorted_pm5[sorted_pm1 < 0]
+  pospe.g5 <- sorted_pm5[sorted_pm1 > 0]
+  sorted_rhi.g5 <- rhi.g5[order_pm1, ]
+  negatives.g5 <- sorted_rhi.g5[sorted_pm1 < 0, ]
+  positives.g5 <- sorted_rhi.g5[sorted_pm1 > 0, ]
+  
+  # ✅ Adjust point estimates to fall inside CI if needed
+  pospe.g1 <- adjust_point_estimates(pospe.g1, positives.g1)
+  pospe.g5 <- adjust_point_estimates(pospe.g5, positives.g5)
+  negpe.g1 <- adjust_point_estimates(negpe.g1, negatives.g1)
+  negpe.g5 <- adjust_point_estimates(negpe.g5, negatives.g5)
+  
+  # Safeguard
+  ensure_length_match <- function(x, y, target_length) {
+    x <- head(x, target_length)
+    y <- head(y, target_length)
+    list(x = x, y = y)
+  }
+  
+  plot_CI_95_dem <- function(size, pospe.g1, positives.g1, pospe.g5, positives.g5, order_pos, is_positive = TRUE) {
+    offset <- 0.4
+    colsuse <- c("steelblue", "orange2")
+    B <- size
+    
+    # Combine all CI bounds and point estimates for full-range x-axis
+    
+    all_vals <- c(
+      positives.g1[, 1], positives.g1[, 2], pospe.g1,
+      positives.g5[, 1], positives.g5[, 2], pospe.g5
+    )
+    max_abs <- max(abs(all_vals), na.rm = TRUE)
+    min_abs <- min(abs(all_vals), na.rm = TRUE)
+    x_range <- range(all_vals, na.rm = TRUE)
+    for (j in 1:2) {
+      if (j == 1) {
+        x_1 <- positives.g1[, 2]
+        x_0 <- positives.g1[, 1]
+        x_vals <- pospe.g1
+      } else {
+        x_1 <- positives.g5[, 2]
+        x_0 <- positives.g5[, 1]
+        x_vals <- pospe.g5
+      }
+      
+      lengths <- ensure_length_match(x_vals, 1:B + offset * ifelse(j == 1, 1, -1), B)
+      x_vals <- lengths$x
+      y_vals <- lengths$y
+      
+      if (j == 1) {
+        plot(x_vals, y_vals,
+             pch = 20,
+             xlim = x_range,                      # ✅ Expanded x-axis
+             xlab = " ",
+             ylab = "Connectivity Edge Index",    # ✅ Updated y-label
+             cex = 1,
+             col = colsuse[j],
+             yaxt = "n"
+        )
+      } else {
+        points(x_vals, y_vals,
+               pch = 20,
+               col = colsuse[j],
+               yaxt = "n"
+        )
+      }
+      
+      for (i in 1:B) {
+        segments(x_0[i], y_vals[i], x_1[i], y_vals[i], col = colsuse[j], lwd = 1.5)
+      }
+    }
+    
+    axis(side = 2, at = 1:B, labels = order_pos, cex.axis = 0.5, padj = 0.6, las = 2)
+    axis(side = 1)
+    legend("bottomright", legend = c("Healthy", "MCI"), lty = 1, col = colsuse, cex = 1)
+  }
+  o <- paste(outputdir,"/")
+  if (!dir.exists(o)) dir.create(o, recursive = TRUE)
+  # Plot Positives
+  pdf(paste0(o, group, metric,lobe, "CIPos.pdf"), height = 11, width = 7)
+  message("Generating positive connectivity plot...")
+  plot_CI_95_dem(min(length(pospe.g1), length(pospe.g5)), pospe.g1, positives.g1, pospe.g5, positives.g5, order_pos)
+  dev.off()
+  message("Positive connectivity plot saved.")
+  
+  # Plot Negatives
+  pdf(paste0(o, group, metric,lobe, "CINeg.pdf"), height = 11, width = 7)
+  message("Generating negative connectivity plot...")
+  plot_CI_95_dem(min(length(negpe.g1), length(negpe.g5)), negpe.g1, negatives.g1, negpe.g5, negatives.g5, order_neg, is_positive = FALSE)
+  dev.off()
+  message("Negative connectivity plot saved.")
+}
 
