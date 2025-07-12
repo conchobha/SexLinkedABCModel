@@ -177,8 +177,76 @@ remakeAtlas <- function()
   
 }
 grouplist <- list("fcn", "fmci", 
-                  "fscd", "mcn", "mmci", "mscd"
+                   "mcn", "mmci"
 )
 metriclist <- list("Da","Dr","FA","ICVF","MD")
 
 for(g in grouplist) for (m in metriclist) savedata(group = g, datametric = m)
+
+
+UVC2UVPM <- function(group,limit = NA, modeldir, outputdir){
+# Recalculates the UVPM from a given UVC file, more robust than original UVPM
+
+setwd(modeldir)
+
+#load the UVC file
+uvc_file <- paste0('Average_',group,'_UVC.rds')
+if (!file.exists(uvc_file)) {
+  stop(paste("UVC file for group", group, "does not exist."))
+}
+uvc <- readRDS(uvc_file)
+
+if(is.na(limit)) {
+  # If limit is not specified, use the full UVC
+  UVC <- uvc
+} else{ 
+  UVC <- uvc[limit,]
+}
+
+# create a 84x84 matrix to hold the UVPM
+uvpm <- matrix(0, nrow = 84, ncol = 84)
+
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  index <- 1
+  for (j in 2:84) { # Start from the second column
+    for (i in 1:(j - 1)) { # Only fill below the diagonal
+      loc_matrix[i, j] <- index
+      index <- index + 1
+    }
+  }
+
+  # using the loc_matrix for indexing, fill out the uvpm matrix
+  for (i in 1:84) {
+    for (j in 1:84) {
+      if (i != j || loc_matrix[i,j] != 0) { # Skip the diagonal
+        uvpm[i, j] <- mean(UVC[loc_matrix[i, j]])
+      }
+    }
+  }
+
+  #place the data in the upper tri into the lower tri
+  for (i in 1:84) {
+    for (j in 1:84) {
+      if (i < j) {
+        uvpm[j, i] <- uvpm[i, j]
+      }
+    }
+  }
+
+  #save the UVPM matrix
+  if (!dir.exists(outputdir)) dir.create(outputdir, recursive = TRUE)
+  setwd(outputdir)
+  uvpm_file <- paste0('Average_', group, '_UVPM.rds')
+  saveRDS(uvpm, uvpm_file)
+  message(paste("UVPM for group", group, "has been recalculated and saved to", uvpm_file))
+}
+
+
+for (g in grouplist)
+{
+  if (g == 'fmci') limit = 4500:5500
+  else limit = NA
+  UVC2UVPM(group = g, limit = limit, modeldir = '~/Documents/Work/FinalFiles', outputdir = '~/Documents/Work/FinalFiles/fixed')
+  
+  
+}

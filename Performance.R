@@ -2,15 +2,138 @@
 # Working versions of functions will be in the MeasurePerformance.R file
 # This file should be sourced and used by other analysis scripts
 
-
+# ~/Documents/Work/FinalFiles/500k/AveragedResults500k
 #' @title Measure Performance
 #' @description This function measures the performance of a model using various metrics. Most of these functions are the 
 #'  final versions of the functions used to measure performance in the project. In progress files are in MeasurePerformance.R
 
 
 
+#APM 
 
-Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, 
+disgraph <- function(loc = '~/Downloads/APM') { # violin plot code 
+  setwd(loc)
+  grouplist <- c("fcn", "fmci", "mcn", "mmci")  # Change this to a vector
+  datalist <- list()
+  
+  for (g in grouplist) {
+    data <- readRDS(paste0('Average_', g, "_APM.rds"))
+    APM <- data$APM
+    matrix_data <- matrix(unlist(APM), nrow = length(APM), byrow = TRUE)
+    Av <- colMeans(matrix_data)
+    datalist[[g]] <- Av
+  }
+  
+  library(ggplot2)
+  library(tidyr)
+  library(dplyr)
+  
+  # Convert list to data frame
+  datalist_df <- stack(datalist)
+  colnames(datalist_df) <- c("value", "group")
+  
+  # Recode group names
+  group_labels <- c(
+    fcn = "Healthy Female",
+    fmci = "Female MCI",
+    mcn = "Healthy Male",
+    mmci = "Male MCI"
+  )
+  
+  # Count number of datapoints per group
+  counts <- datalist_df %>%
+    group_by(group) %>%
+    summarise(n = n(), .groups = 'drop')
+  
+  # Create group labels with line break before n
+  counts$label <- paste0(group_labels[counts$group], "\n(n = ", counts$n, ")")
+  
+  # Join updated labels into datalist_df
+  datalist_df <- datalist_df %>%
+    left_join(counts, by = "group")
+  
+  # Set factor levels in the correct order
+  label_levels <- sapply(grouplist, function(g) {
+    paste0(group_labels[g], "\n(n = ", counts$n[counts$group == g], ")")
+  })
+  
+  datalist_df$label <- factor(datalist_df$label, levels = label_levels)
+  
+  # Violin plot with group-specific n values in x-axis labels
+  ggplot(datalist_df, aes(x = label, y = value)) +
+    geom_violin(fill = "gray85", color = "black", trim = FALSE) +
+    geom_boxplot(width = 0.1, outlier.shape = NA, color = "black", fill = "white") +
+    theme_minimal() +
+    labs(y = "Participant Connectivity Density", x = "") +
+    theme(
+      legend.position = "none",
+      axis.text = element_text(size = 30, angle = 45, hjust = 1),
+      axis.title = element_text(size = 26),
+      strip.text = element_text(size = 14),
+      plot.title = element_text(size = 18, face = "bold")
+    )
+}
+
+APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
+{
+  #This function will take two groups, pull the APM data from each group, and then run a paired t-test on them.
+
+  g1name <- paste0('Average_',g1,"_APM.rds")
+  g2name <- paste0('Average_',g2,"_APM.rds")
+  setwd(loc)
+  data1 <- readRDS(g1name)
+  data2 <- readRDS(g2name)
+  
+  APM1 <- data1$APM
+  APM2 <- data2$APM
+
+  # Convert the APM data to a matrix
+  matrix_data1 <- matrix(unlist(APM1), nrow = length(APM1), byrow = TRUE)
+  matrix_data2 <- matrix(unlist(APM2), nrow = length(APM2), byrow = TRUE)
+
+  #Calculate the Average APM for each participant
+  RowAv1 <- colMeans(matrix_data1)
+  RowAv2 <- colMeans(matrix_data2)
+
+  #do the t-test
+  t_test_result <- t.test(RowAv1, RowAv2, paired = TRUE)
+  print(paste("For ", g1, " vs ", g2))
+  print(t_test_result)  
+}
+
+
+Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", 
+                      group, av = TRUE, 
+                      filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
+                      outputdir) {
+  library(coda)
+  setwd(filedir)
+  if(!av){
+  data <- readRDS(modelname)
+  model1 <- data$model
+  UVPM1 <- model1$UVPM
+  l <- data$sn / 10
+  UVC1 <- model1$UVC#[4500:7500, 90:100]
+  }else{
+    UVC_name <- paste0("Average_",group,"_UVC.rds")
+    UVPM_name <- paste0("Average_",group,"_UVPM.rds")
+    UV <- readRDS(UVC_name)
+    if(group == 'fmci') UVC1 <- UV#[4500:5500, 90:100]
+    else 
+    UVC1 <- UV[, 90:100]
+    UVPM1 <- readRDS(UVPM_name)
+    l <- 200000/10
+  }
+  # model1$TAC
+  
+  mc1 <- mcmc(data = UVC1, start = 1, end = nrow(UVC1), thin = 1)
+  setwd(outputdir)
+  pdf(file = paste0(group, "_Traceplot.pdf"))
+  traceplot(mc1, ylab = "Covariance Estimate")
+  dev.off()
+}
+
+Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, range = NA,
                     atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds',
                     modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                     outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
@@ -19,6 +142,7 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE,
   #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
   #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output. Use Average for most final plots 
   #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap. Be sure to have an atlas file
+  #' @param range: For the subject heatmap, it allows you to give a legend range, if NA it will create one automatically
   #' @param modeldir: The directory where the model outputs are stored. If using av, point it to where the average data is stored
   #' @param outputdir: The directory where the heatmap will be saved\
   
@@ -131,7 +255,7 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE,
     g1data <- readRDS(g1name)
   } else {
     # load the data for g1
-    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata")
+    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_5e+05_10000.rdata")
     data <- readRDS(g1name)
     model <- data$model
     g1data <- model$UVPM
@@ -153,19 +277,19 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE,
     UVC1_1 <- readRDS(model1name)
     UVC2_1 <- readRDS(model2name)
   }else{
-    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata")
+    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_5e+05_10000.rdata")
     data <- readRDS(g1name)
     model <- data$model
     UVC1_1 <- model$UVC
     
-    g2name <- paste0("ADNI_",metric,"_", g2, "_mean_2e+05_1000.rdata")
+    g2name <- paste0("ADNI_",metric,"_", g2, "_mean_5e+05_10000.rdata")
     data <- readRDS(g2name)
     model <- data$model
     UVC2_1<- model$UVC
   }
-   if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
+   if(g2 == 'fmci') UVC2 <- UVC2_1
     else UVC2 <- UVC2_1
-    if(g1 == 'fmci') UVC1 <- UVC1_1[4500:5500,]
+    if(g1 == 'fmci') UVC1 <- UVC1_1
     else UVC1 <- UVC1_1
     #UVC1 <- UVC1_1
     #UVC2 <- UVC2_1
@@ -259,6 +383,11 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE,
     
   }else {
     pdf(file = fname, width =8.5)
+    
+    if(is.na(range)) {
+      range <- c(min(m, na.rm = TRUE), max(m, na.rm = TRUE))
+    }
+    suppressWarnings({ 
     corrplot(m,
              method = "color",
              col = colorRampPalette(c("#1F77B4","white", "#FF7F0E"))(200),
@@ -266,10 +395,11 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE,
              # addgrid.col = "white",
              cl.pos = "b",
              is.corr = FALSE,
-            # col.lim = c(-0.2,.27),
+             col.lim = range,
              cl.cex = 1.25
     )
-    }
+  })
+  }
   
   
   if (order) add_RSN_borders(atlasloc = atlasloc)
@@ -372,7 +502,7 @@ AverageAPM <- function(g='fcn',metric='OD',modelloc = "/N/slate/conlcorn/SexLink
   saveRDS(file,file=filename)
 }
 
-CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
+CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",metric = 'OD',
                         modelloc = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                         outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SpiderPlots", 
                         av = TRUE) 
@@ -384,15 +514,20 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   #' This measures if we see where g1 is significantly less than g2, more than, or both
 
   
-  reorder <- function(matrix_to_reorder) {
+  reorder <- function(matrix_to_reorder, atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds' ) { #function to reorder the matrix based on a given atlas
     # Load the required data
-    load("~/Documents/Work/ModelFiles/finalAtlas.rds")
+    load(atlasloc)
+    
+    
     # Sort the data frame by the 'LOBE' column
     sorted_df <- final_df[order(final_df$LOBE), ]
+    
     # Reorder the rows based on the sorted indices
     sorted_indices <- sorted_df$row_number
+    
     # Reorder both rows and columns of the matrix
     reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+    
     return(reordered_mat)
   }
   
@@ -417,14 +552,14 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
     model2name <- paste0("Average_", g2, "_UVC.rds")
     UVC1 <- readRDS(model1name)
     UVC2_1 <- readRDS(model2name)
-    if(g2 == 'fmci') UVC2 <- UVC2_1[4500:5500,]
+    if(g2 == 'fmci') UVC2 <- UVC2_1
     else UVC2 <- UVC2_1
   } else {
     setwd(modelloc)
-    model1name <- paste0("ADNI_OD_", g1, "_mean_2e+05_1000.rdata")
+    model1name <- paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata")
     model1 <- readRDS(model1name)
     model1 <- model1$model
-    model2name <- paste0("ADNI_OD_", g2, "_mean_2e+05_1000.rdata")
+    model2name <- paste0("ADNI_",metric,"_", g2, "_mean_2e+05_1000.rdata")
     model2 <- readRDS(model2name)
     model2 <- model2$model
     UVC2 <- model2$UVC
@@ -593,71 +728,6 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",
   dev.off()
 }
 
-disgraph <- function(loc = '~/Downloads/APM') { # violin plot code 
-  setwd(loc)
-  grouplist <- c("fcn", "fscd", "fmci", "mcn", "mscd", "mmci")  # Change this to a vector
-  datalist <- list()
-  
-  for (g in grouplist) {
-    data <- readRDS(paste0('Average_', g, "_APM.rds"))
-    APM <- data$APM
-    matrix_data <- matrix(unlist(APM), nrow = length(APM), byrow = TRUE)
-    Av <- colMeans(matrix_data)
-    datalist[[g]] <- Av
-  }
-  
-  library(ggplot2)
-  library(tidyr)
-  library(dplyr)
-  
-  # Convert list to data frame
-  datalist_df <- stack(datalist)
-  colnames(datalist_df) <- c("value", "group")
-  
-  # Recode group names
-  group_labels <- c(
-    fcn = "Healthy Female",
-    fscd = "Female SCD",
-    fmci = "Female MCI",
-    mcn = "Healthy Male",
-    mscd = "Male SCD",
-    mmci = "Male MCI"
-  )
-  
-  # Count number of datapoints per group
-  counts <- datalist_df %>%
-    group_by(group) %>%
-    summarise(n = n(), .groups = 'drop')
-  
-  # Create group labels with line break before n
-  counts$label <- paste0(group_labels[counts$group], "\n(n = ", counts$n, ")")
-  
-  # Join updated labels into datalist_df
-  datalist_df <- datalist_df %>%
-    left_join(counts, by = "group")
-  
-  # Set factor levels in the correct order
-  label_levels <- sapply(grouplist, function(g) {
-    paste0(group_labels[g], "\n(n = ", counts$n[counts$group == g], ")")
-  })
-  
-  datalist_df$label <- factor(datalist_df$label, levels = label_levels)
-  
-  # Violin plot with group-specific n values in x-axis labels
-  ggplot(datalist_df, aes(x = label, y = value)) +
-    geom_violin(fill = "gray85", color = "black", trim = FALSE) +
-    geom_boxplot(width = 0.1, outlier.shape = NA, color = "black", fill = "white") +
-    theme_minimal() +
-    labs(y = "Participant Connectivity Density", x = "") +
-    theme(
-      legend.position = "none",
-      axis.text = element_text(size = 30, angle = 45, hjust = 1),
-      axis.title = element_text(size = 26),
-      strip.text = element_text(size = 14),
-      plot.title = element_text(size = 18, face = "bold")
-    )
-}
-
 
 
 CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",atlasloc , av = TRUE, outputdir, lobe = NA) {
@@ -739,12 +809,12 @@ if(is.na(lobe)) {
   if (!av) {
     df <- readRDS(mci_name)
     model1 <- df$model
-    if(group == 'f') UVC1 <- model1$UVC[4500:7500, ]
+    if(group == 'f') UVC1 <- model1$UVC
     else UVC1 <- model1$UVC
     UVPM <- model1$UVPM
   } else {
     UV <- readRDS(mci_UVC_name)
-    if (group == 'f') UVC1 <- UV[4500:5500, ]
+    if (group == 'f') UVC1 <- UV
     else UVC1 <- UV
     UVPM <- readRDS(mci_UVPM_name)
   }
@@ -846,3 +916,336 @@ if(is.na(lobe)) {
   message("Negative connectivity plot saved.")
 }
 
+plotremake <- function(models,output, metric = 'OD', atlasloc)
+# An overall function that regenerates all plots for the project 
+# This is useful if we rerun the models. It makes Traceplots, Heatmaps, and spiderplots.
+{
+
+group <- c('fcn','fmci','mcn','mmci')
+
+#Call the traceplot function for each group
+
+#in the outputdir, we want to save it to the plots folder
+outputdir <- paste0(output,"/Traceplots")
+#for (g in group) Traceplot(modelname =  paste0("ADNI_OD_", g, "_mean_5e+05_10000.rdata"),group = g, filedir = models, outputdir = outputdir , av = FALSE)
+#message("Traceplots Done, Making Heatmaps")
+
+#Heatmaps
+outputdir <- paste0(output,"/Heatmaps")
+for (g in group)
+{
+  if(g == 'fcn' || g =='fmci' ) r <- c(-.17,.27)
+  else r <- c(-.2,.32)
+  Heatmap(g1 = g, metric = 'OD', modeldir = models, outputdir = outputdir, atlasloc = atlasloc, av = FALSE, order = TRUE, range = r)
+  
+}
+#Also want the dif heatmaps for the two genders
+Heatmap(g1 = 'fcn', g2 = 'fmci', metric = 'OD', modeldir = models, outputdir = outputdir, atlasloc = atlasloc, av = FALSE, order = TRUE)
+Heatmap(g1 = 'mcn', g2 = 'mmci', metric = 'OD', modeldir = models, outputdir = outputdir, atlasloc = atlasloc, av = FALSE, order = TRUE)
+message("Heatmaps Done, moving to spider plots")
+#Spiderplots
+outputdir <- paste0(output,"/Spiderplots")
+CI_SpiderPlot(g1 = 'fcn', g2 = 'fmci', modelloc = models, outputdir = outputdir, av = FALSE)
+CI_SpiderPlot(g1 = 'mcn', g2 = 'mmci', modelloc = models, outputdir = outputdir, av = FALSE)
+#message("All plots generated and saved.")
+}
+plotremake(models = '~/Documents/Work/FinalFiles/500k',output ='~/Documents/Work/plotting/500k' ,atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds')
+
+
+# Lobe specific Heatmap function 
+LobeHeatmap <- function(g1,g2, lobe = NA, modelloc, atlasloc, outputloc, av = TRUE) {
+  # takes in two groups, and makes the four heatmaps we are planning to use for our overall lobe specific analysis 
+  #' @param g1 defines the first group
+  #' @param g2 defines the second group
+  #' @param lobe defines the lobe to analyze, either 'Cingulate', 'Frontal', 'Insular', 'Occipital', 'Parietal', 'Subcortical', or 'Temporal'
+  #' @param modelloc defines the location of the models
+  #' @param atlasloc defines the location of the atlas file
+  #' @param outputloc defines the location to save the results
+  #' @param av defines if we are using the average data or not
+  
+  #We plan for a Raw UVPM differences and CI differences 
+  library(corrplot)
+  
+
+
+  if(av){
+  setwd(modelloc)
+  g1name <- paste0('Average_',g1,'_UVPM.rds')
+  g2name <- paste0('Average_',g2,'_UVPM.rds')
+  
+  g1UVPM <- readRDS(g1name)
+  g2UVPM <- readRDS(g2name)
+  
+  
+  g1UVC <- readRDS(paste0('Average_',g1,'_UVC.rds'))
+  g2UVC <- readRDS(paste0('Average_',g2,'_UVC.rds'))
+  
+  if(g2 == 'fmci') { # We need to limit the MCMC to the stabalized regions(4500-5500)
+    temp <- g2UVC
+    g2UVC <- temp # Set the g2UVC to the temp value
+  }else if(g1 == 'fmci') {
+    temp <- g1UVC
+    g1UVC <- temp # Set the g1UVC to the temp value
+  }
+  }
+
+  else {
+    setwd(modelloc)
+    g1name <- paste0('ADNI_OD_',g1,'_mean_5e+05_10000.rdata')
+    g2name <- paste0('ADNI_OD_',g2,'_mean_5e+05_10000.rdata')
+    
+    g1pull <- readRDS(g1name)
+    g2pull <- readRDS(g2name)
+    
+    g1model <- g1pull$model
+    g2model <- g2pull$model
+    g1UVC <- g1model$UVC
+    g2UVC <- g2model$UVC
+
+    g1UVPM <- g1model$UVPM
+    g2UVPM <- g2model$UVPM
+    
+  }
+  # best way to do this is to do the operations to all of the data, then just subset the data to the lobe we want to analyze, since most of the code we have already written works off the whole set 
+  
+  # Generate the absolute differences
+  abs_diff_UVPM <- g1UVPM - g2UVPM
+  
+  
+  # Load the required data
+  load(atlasloc)
+  
+  
+  # Sort the data frame by the 'LOBE' column
+  sorted_df <- final_df[order(final_df$LOBE), ]
+  
+  # Reorder the rows based on the sorted indices
+  sorted_indices <- sorted_df$row_number
+  
+  # Reorder both rows and columns of the matri
+  # We now need to filter based on our lobe of interest
+  # since we pulled the final_df out, it's still in memory, so we can use it to filter the rows and columns of the matrix
+  #If lobe is NA, we can just pull all of them
+  if(is.na(lobe)) {
+    lobe_indices <- 1:nrow(final_df) # Get all indices
+  } else {
+    lobe_indices <- which(final_df$LOBE == lobe) # Get the indices of the lobe we want to analyze
+  }
+  
+  lobe_matrix <- abs_diff_UVPM[lobe_indices, lobe_indices] # Subset the matrix to only the lobe of interest
+  
+  # In theory, we now have a matrix that holds the absolute differences in the UVPM for the lobe of interest
+  
+  # We also need to get the name of each region in the lobe, so we can label the heatmap
+  lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  # in lobe region names, remove everything before the first underscore
+  lobe_region_names <- sub("^[^_]+-", "", lobe_region_names) # Remove everything before the first underscore
+  rownames(lobe_matrix) <- lobe_region_names
+  colnames(lobe_matrix) <- lobe_region_names
+  # Create a heatmap of the absolute differences in UVPM for the lobe of interest, using the lobe_region_names as the for each row/column
+  # Define a custom color palette: cyan for negative, white for zero, orange for positive
+  custom_palette <- colorRampPalette(c("#FF7F0E", "#FFFFFF", "#1F77B4"))(100)
+  # Plot 1: Heatmap of differences
+  #---------------------------------------------------------------------------------------------- 
+  # Plot the heatmap with no numbers, axis titles only,
+  # and vertical legend on the right
+  
+  # Open PDF device with larger margins to fit axis labels
+  if (!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+  setwd(outputloc)
+  fname <- paste0(g1, "_vs_", g2, "_", lobe, "_lobe_heatmap.pdf")
+  pdf(file = fname, width = 10, height = 10) # Increase width/height for more space
+  
+  # Adjust plot margins: bottom, left, top, right
+  
+  
+  # Flip the y-axis and corresponding labels, set blue for negative and orange for positive, show legend
+  # Create a custom color palette: blue for negative, white for zero, orange for positive
+  #custom_palette <- colorRampPalette(c("#1F77B4", "#FFFFFF", "#FF7F0E"))(100)
+  
+  #in the matrix, set the names of the rows and columns to the lobe region name
+  corrplot(
+    lobe_matrix,
+    is.corr = FALSE,  # Set to FALSE since this is not a correlation matrix
+    col = custom_palette,
+    method = "color",  # Use color method for heatmap
+    addgrid.col = "white",  # Add grid lines in White
+    tl.col = "black",  # Text label color
+    tl.srt = 45,  # Rotate text labels for better readability
+    tl.cex = 1.3,  # Text label size
+    cl.cex = 1.3,  # Color legend size
+  )
+  dev.off()
+  # Part 2: Get the top five most significant connections within the lobe
+  # -----------------------------------------------------------------------
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+  index <- 1
+  for (j in 2:84) { # Start from the second column
+    for (i in 1:(j - 1)) { # Only fill below the diagonal
+      loc_matrix[i, j] <- index
+      index <- index + 1
+    }
+  }
+  
+  
+  
+  lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  # in lobe region names, remove everything before the first underscore
+  # retrieve the standard deviation of the UVPM for each region in the lobe, using the UVC to calculate the standard deviation
+
+  #UVC is a matrix of itt x total connections. We can parse it, reconstruct a 84x84 matrix to hold the SD, and then use that matrix to add to the differences 
+
+  #calculate the standard deviation of the UVC
+  lobe_UVC <- g1UVC[lobe_indices, lobe_indices] - g2UVC[lobe_indices, lobe_indices] # Get the UVC for the lobe of interest
+ # combute the SD of each column
+ # Calculate the standard deviation for each connection in the lobe
+  # Should be a 1x3486 matrix, that we can then tie to a specific region 
+
+  #put these into a 84x84 matrix 
+  SDmatrix <- matrix(0, nrow = 84, ncol = 84)
+  for (i in 1:84) {
+    for (j in 1:84) {
+      n <- loc_matrix[i, j]
+      if (n == 0) next
+      #place the standard deviation in the matrix
+      #Calce the Variance of the UVC1
+      var1 <- var(g1UVC[n, ])
+      var2 <- var(g2UVC[n, ])
+
+      #Calce the Covariance of the UVC1 and 2
+      cov12 <- cov(g1UVC[n, ], g2UVC[n, ])
+
+      # Calculate the standard deviation
+      s <- sqrt(var1 + var2 - 2 * cov12) 
+      SDmatrix[i, j] <- s
+    }
+  }
+
+
+  #lobe_region_names <- sub("^[^_]+_", "", lobe_region_names) # Remove everything before the first underscore
+  rownames(lobe_matrix) <- lobe_region_names
+  colnames(lobe_matrix) <- lobe_region_names
+  # Find the indices of the 5 smallest and 5 largest values (excluding diagonal)
+  lobe_matrix_no_diag <- lobe_matrix
+  diag(lobe_matrix_no_diag) <- NA
+  # also set the Lower Tri to NA, so we only get the upper triangle
+  lobe_matrix_no_diag[lower.tri(lobe_matrix_no_diag)] <- NA
+  
+  # Get indices for smallest and largest values
+  smallest_idx <- arrayInd(order(lobe_matrix_no_diag, na.last = NA)[1:10], dim(lobe_matrix_no_diag))
+  largest_idx <- arrayInd(order(lobe_matrix_no_diag, decreasing = TRUE, na.last = NA)[1:10], dim(lobe_matrix_no_diag))
+  
+  # Build data frames with region names and difference values
+  five_smallest <- data.frame(
+    Region1 = rownames(lobe_matrix)[smallest_idx[, 1]],
+    Region2 = colnames(lobe_matrix)[smallest_idx[, 2]],
+    Difference = lobe_matrix_no_diag[smallest_idx],
+    SD = SDmatrix[smallest_idx]
+  )
+  
+  five_largest <- data.frame(
+    Region1 = rownames(lobe_matrix)[largest_idx[, 1]],
+    Region2 = colnames(lobe_matrix)[largest_idx[, 2]],
+    Difference = lobe_matrix_no_diag[largest_idx],
+    SD = SDmatrix[largest_idx]
+  )
+  # Print the results
+  print("Five smallest differences in UVPM within the lobe:")
+  print(five_smallest)
+  print("Five largest differences in UVPM within the lobe:")
+  print(five_largest)
+  # sort the lobe_matrix by the absolute difference, but keep track if it's positive or negative, we then want to print the top five most significant connections
+  # We will use the absolute value of the differences to sort, but we will keep track of the sign
+  
+  
+  
+  
+  
+  
+  # Part 3: Make the Signifigance Heatmap
+  # -----------------------------------------------------------------------
+  # generate the 95% CI for the UVC DATA
+  hi.g1 <- t(apply(g1UVC, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # 95% CI
+  hi.g2 <- t(apply(g2UVC, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # 95% CI
+  
+  
+  # We can use this matrix to pull the proper CI's for each connection, then return the matrix to be made into the heatmap
+  # Use the number stored in the loc_matrix to pull the CI's from the hi.g1 and hi.g2 matrices
+  matrix_data <- matrix(0, nrow = 84, ncol = 84)
+  for (i in 1:84) {
+    for (j in 1:84) {
+      n <- loc_matrix[i, j]
+      if (n == 0) next
+      
+      tmp1 <- hi.g1[n, ]
+      tmp2 <- hi.g2[n, ]
+      if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+        if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+          matrix_data[i, j] <- 1
+        } else if (tmp1[1] >= tmp2[2]) {
+          matrix_data[i, j] <- -1
+        } 
+      }
+    }
+  }
+  # We need to make sure the matrix is symmetric
+  for (i in 1:nrow(matrix_data)) {
+    for (j in 1:ncol(matrix_data)) {
+      if (i != j) {
+        # Check if matrix_data[i, j] is zero but matrix_data[j, i] is non-zero
+        if (matrix_data[i, j] == 0 && matrix_data[j, i] != 0) {
+          matrix_data[i, j] <- matrix_data[j, i]
+        }
+        # Check if matrix_data[j, i] is zero but matrix_data[i, j] is non-zero
+        else if (matrix_data[j, i] == 0 && matrix_data[i, j] != 0) {
+          matrix_data[j, i] <- matrix_data[i, j]
+        }
+      }
+    }
+  }
+  
+  
+  # we then need to reorder using the same method as before, so that the regions are in the correct order
+  lobe_significant_matrix <- matrix_data[lobe_indices, lobe_indices] # Subset the matrix to only the lobe of interest
+  # add the names
+  lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  # in lobe region names, remove everything before the first underscore
+  lobe_region_names <- sub("^[^_]+-", "", lobe_region_names) # Remove everything before the first underscore
+  rownames(lobe_significant_matrix) <- lobe_region_names
+  colnames(lobe_significant_matrix) <- lobe_region_names
+  m <- lobe_significant_matrix
+  # Set the Y axis labels to " ", so we only show the X-axis labels
+  
+  
+  #in the matrix, set the names of the rows and columns to the lobe region name
+  m[m > 1] <- 1
+  m[m < -1] <- -1
+  # Define the color palette: blue for -1, white for 0, orange for 1
+  color_palette <- colorRampPalette(c("#1F77B4", "white", "#FF7F0E"))(200)
+  # Open PDF device with larger margins to fit axis labels
+  if (!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+  setwd(outputloc)
+  fname <- paste0(g1, "_vs_", g2, "_", lobe, "_lobe_significance_heatmap.pdf")
+  pdf(file = fname, width = 10,height = 10) # Increase width/height for more space
+  # Plot the matrix
+  # remove the y axis labels, and only show the x-axis labels
+  
+  
+  suppressWarnings({
+    corrplot(
+      m,
+      is.corr = FALSE,  # Set to FALSE since this is not a correlation matrix
+      col = color_palette,
+      method = "color",  # Use color method for heatmap
+      addgrid.col = "white",  # Add grid lines in White
+      tl.col = "black",  # Text label color
+      tl.srt = 45,  # Rotate text labels for better readability
+      tl.cex = 1.3,  # Text label size
+      cl.cex = 1.3,  # Color legend size
+    )
+  })
+  dev.off() # Close the PDF device to save the plot
+}
+CI_SpiderPlot(g1 = 'fcn',g2 = 'fmci',metric = 'FA',modelloc = '~/Documents/Work/FinalFiles/Other',outputdir = '~/Documents/Work/FinalFiles/Other',av = FALSE)

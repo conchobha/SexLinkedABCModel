@@ -226,12 +226,12 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   model1 <- data$model
   UVPM1 <- model1$UVPM
   l <- data$sn / 10
-  UVC1 <- model1$UVC[4500:7500, 90:100]
+  UVC1 <- model1$UVC#[4500:7500, 90:100]
   }else{
     UVC_name <- paste0("Average_",group,"_UVC.rds")
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
     UV <- readRDS(UVC_name)
-    if(group == 'fmci') UVC1 <- UV[4500:5500, 90:100]
+    if(group == 'fmci') UVC1 <- UV#[4500:5500, 90:100]
     else 
     UVC1 <- UV[, 90:100]
     UVPM1 <- readRDS(UVPM_name)
@@ -1421,7 +1421,7 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
   RowAv2 <- colMeans(matrix_data2)
 
   #do the t-test
-  t_test_result <- t.test(RowAv1, RowAv2, paired = TRUE)
+  t_test_result <- t.test(RowAv1, RowAv2, paired = FALSE)
   print(paste("For ", g1, " vs ", g2))
   print(t_test_result)  
 }
@@ -1658,11 +1658,18 @@ trim_upper_triangle <- function(matrix) {
   
   return(trimmed_matrix)
 }
-
+metric <- 'OD'
 setwd(modelloc)
   if(!av) {
-    warning("Not Supported Yet")
-    return()
+    g1name <- paste0("ADNI_",metric,"_", g1, "_mean_5e+05_10000.rdata")
+    data <- readRDS(g1name)
+    model <- data$model
+    UVC1_1 <- model$UVPM
+    
+    g2name <- paste0("ADNI_",metric,"_", g2, "_mean_5e+05_10000.rdata")
+    data <- readRDS(g2name)
+    model <- data$model
+    UVC2_1<- model$UVPM
   }
   else{
     g1name <- paste0('Average_',g1,'_UVPM.rds')
@@ -1816,10 +1823,10 @@ LobeHeatmap <- function(g1,g2, lobe, modelloc, atlasloc, outputloc){
     g2UVC <- readRDS(paste0('Average_',g2,'_UVC.rds'))
 
     if(g2 == 'fmci') { # We need to limit the MCMC to the stabalized regions(4500-5500)
-      temp <- g2UVC[4500:5500,] 
+      temp <- g2UVC
       g2UVC <- temp # Set the g2UVC to the temp value
     }else if(g1 == 'fmci') {
-      temp <- g1UVC[4500:5500,]
+      temp <- g1UVC
       g1UVC <- temp # Set the g1UVC to the temp value
     }
   
@@ -1849,6 +1856,8 @@ LobeHeatmap <- function(g1,g2, lobe, modelloc, atlasloc, outputloc){
 
   # We also need to get the name of each region in the lobe, so we can label the heatmap
   lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  # in lobe region names, remove everything before the first underscore
+  lobe_region_names <- sub("^[^_]+-", "", lobe_region_names) # Remove everything before the first underscore
   rownames(lobe_matrix) <- lobe_region_names
   colnames(lobe_matrix) <- lobe_region_names
   # Create a heatmap of the absolute differences in UVPM for the lobe of interest, using the lobe_region_names as the for each row/column
@@ -1891,7 +1900,11 @@ LobeHeatmap <- function(g1,g2, lobe, modelloc, atlasloc, outputloc){
 
 
 
-
+lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  # in lobe region names, remove everything before the first underscore
+  #lobe_region_names <- sub("^[^_]+_", "", lobe_region_names) # Remove everything before the first underscore
+  rownames(lobe_matrix) <- lobe_region_names
+  colnames(lobe_matrix) <- lobe_region_names
 # Find the indices of the 5 smallest and 5 largest values (excluding diagonal)
 lobe_matrix_no_diag <- lobe_matrix
 diag(lobe_matrix_no_diag) <- NA
@@ -1982,10 +1995,14 @@ five_largest <- data.frame(
     # we then need to reorder using the same method as before, so that the regions are in the correct order
     lobe_significant_matrix <- matrix_data[lobe_indices, lobe_indices] # Subset the matrix to only the lobe of interest
     # add the names
+    lobe_region_names <- final_df$ROI[lobe_indices] # Get the region names for the lobe of interest
+  # in lobe region names, remove everything before the first underscore
+    lobe_region_names <- sub("^[^_]+-", "", lobe_region_names) # Remove everything before the first underscore
     rownames(lobe_significant_matrix) <- lobe_region_names
     colnames(lobe_significant_matrix) <- lobe_region_names
     m <- lobe_significant_matrix
-
+    # Set the Y axis labels to " ", so we only show the X-axis labels
+    
 
     #in the matrix, set the names of the rows and columns to the lobe region name
     m[m > 1] <- 1
@@ -1998,6 +2015,9 @@ five_largest <- data.frame(
     fname <- paste0(g1, "_vs_", g2, "_", lobe, "_lobe_significance_heatmap.pdf")
     pdf(file = fname, width = 10,height = 10) # Increase width/height for more space
     # Plot the matrix
+   # remove the y axis labels, and only show the x-axis labels
+ 
+    
     suppressWarnings({
       corrplot(
         m,
@@ -2009,10 +2029,7 @@ five_largest <- data.frame(
         tl.srt = 45,  # Rotate text labels for better readability
         tl.cex = 1.3,  # Text label size
         cl.cex = 1.3,  # Color legend size
-        tl.pos = "t"   # Only show x-axis (top) labels, remove y-axis labels
       )
-      
-
     })
     dev.off() # Close the PDF device to save the plot
 }
@@ -2056,14 +2073,21 @@ if(is.numeric(region1)) {
 if (loc_matrix[region1, region2] == 0){
   warning("Given Regions is out of bounds. This is most likely due to region2 being <= to region1. Attempting to Rerun with swapped indexs")
   if(!flip) RegionMCMC(g1=g1,g2 = g2,region1 = region2,region2 = region1,modeldir = modeldir,atlasloc = atlasloc,outputdir = outputdir,av = av,flip = TRUE)
-  stop()
+  stop("Failed, Invalid regional names")
   
 }else message("Correct Index, Loading Data")
 setwd(modeldir)
 # Load the Data, and parse it to get the MCMC for the specific region connection
 if(!av) {
-  warning("Not Supported Yet")
-  return()
+  g1name <- paste0("ADNI_OD_", g1, "_mean_5e+05_10000.rdata")
+  g1data <- readRDS(g1name)
+  model1 <- g1data$model
+  g1data <- model1$UVC
+
+  g2name <- paste0("ADNI_OD_", g2, "_mean_5e+05_10000.rdata")
+  g2data <- readRDS(g2name)
+  model2 <- g2data$model
+  g2data <- model2$UVC
 } else {
   g1name <- paste0('Average_',g1,'_UVC.rds')
   g1data <- readRDS(g1name)
@@ -2072,41 +2096,58 @@ if(!av) {
   g2data <- readRDS(g2name)
 
   #if any of the groups are fmci, we need to limit the MCMC to the stabalized regions(4500-5500)
-  if(g2 == 'fmci') { # We need to limit the MCMC to the stabalized regions(4500-5500)
-    g2data <- g2data[4500:5500, ]
-  }else if(g1 == 'fmci') {
-    g1data <- g1data[4500:5500, ]
-  }
+  #if(g2 == 'fmci') { # We need to limit the MCMC to the stabalized regions(4500-5500)
+    #g2data <- g2data[4500:5500, ]
+ # }else if(g1 == 'fmci') {
+   # g1data <- g1data[4500:5500, ]
+  #}
 }
 
 #Best way to parse is to use the loc_matrix we know how to create, and then use the index in there to pull the data from the gdata matrix
-
 
 
 MCMC_Data1 <- g1data[,loc_matrix[region1, region2]] # Get the MCMC data for the specific region connection
 MCMC_Data2 <- g2data[,loc_matrix[region1, region2]] # Get the MCMC data for the specific region connection
 
 #plot this data in a density plot, with the region names as the title
-
+# find the MCMC value that is the mean for each group, and we want to plot that as a vertical line
+mean_MCMC1 <- mean(MCMC_Data1, na.rm = TRUE)
+mean_MCMC2 <- mean(MCMC_Data2, na.rm = TRUE)
 if (!dir.exists(outputdir)) dir.create(outputdir, recursive = TRUE)
-  setwd(outputdir)
-  
-  # Open PDF device to save the plot
-  fname <- paste0(g1, "_",g2, "_", region1_name, "_vs_", region2_name, "_MCMC_density_plot.pdf")
-  pdf(file = fname, width = 10, height = 6) # Increase width/height for more space
-  # Plot the density plot
-  plot(density(MCMC_Data1), 
-       main = paste("MCMC Density Plot for", region1_name, "vs", region2_name),
-       xlab = "MCMC Values", ylab = "Density", 
-       col = "blue", lwd = 2, 
-       xlim = range(c(MCMC_Data1, MCMC_Data2), na.rm = TRUE))
-  lines(density(MCMC_Data2), col = "orange", lwd = 2)
-  legend("topright", legend = c(g1, g2), col = c("blue", "orange"), lwd = 2)
-  
-  dev.off() # Close the PDF device to save the plot
+setwd(outputdir)
 
-}
+# Open PDF device to save the plot
+fname <- paste0(g1, "_",g2, "_", region1_name, "_vs_", region2_name, "_MCMC_density_plot.pdf")
+pdf(file = fname, width = 10, height = 6) # Increase width/height for more space
+# Plot the density plot
+d1 <- density(MCMC_Data1)
+d2 <- density(MCMC_Data2)
+
+ylim_max <- max(d1$y, d2$y)
+
+#Clean up the legend names, fcn should be Female CU, fmci should Female MCI and same for male
+if(g1 == 'fcn')leg <- c("Female CU","Female MCI")
+else leg <- c("Male CU", "Male MCI")
+plot(d1, 
+     main = paste("MCMC Density Plot for", region1_name, "vs", region2_name),
+     xlab = "MCMC Values", ylab = "Density", 
+     col = "blue", lwd = 2, 
+     xlim = range(c(MCMC_Data1, MCMC_Data2), na.rm = TRUE),
+     ylim = c(0, ylim_max))
+lines(d2, col = "orange", lwd = 2)
+abline(v = mean_MCMC1, col = "blue", lty = 2, lwd = 2)
+abline(v = mean_MCMC2, col = "orange", lty = 2, lwd = 2)
+legend("topright", legend = leg, col = c("blue", "orange"), lwd = 2)
+
+dev.off() # Close the PDF device to save the plot
 
 
+} 
 
+ 
 
+LobeHeatmap(g1 = 'fcn',g2 = 'fmci', lobe ="Parietal",modelloc ='~/Documents/Work/FinalFiles/500k',atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',  outputloc = '~/Documents/Work/FinalLobe/Parietal', av = FALSE)
+LobeHeatmap(g1 = 'fcn',g2 = 'fmci', lobe ="Occipital",modelloc ='~/Documents/Work/FinalFiles/500k',atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',  outputloc = '~/Documents/Work/plotting/500k/Lobe/Occipital', av = FALSE)
+
+RegionMCMC(g1 = 'mcn',g2 = 'mmci',region = 'lh-postcentral',region2 = 'lh-precuneus', modeldir = '~/Documents/Work/FinalFiles/500k' ,atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',outputdir = '~/Documents/Work/FinalLobe/Frontal',av = FALSE)
+RegionMCMC(g1 = 'mcn',g2 = 'mmci',region = 'rh-lateralorbitofrontal',region2 = 'rh-medialorbitofrontal', modeldir = '~/Documents/Work/FinalFiles/500k' ,atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',outputdir = '~/Documents/Work/FinalLobe/Frontal',av = FALSE)
