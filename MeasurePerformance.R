@@ -1758,8 +1758,7 @@ setwd(modelloc)
   
 }
 
-COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD', outputloc = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD/COVAnalysis', av = TRUE)
-{
+COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD', outputloc = '/N/slate/conlcorn/SexLinkedProject/FinalModels/OD/COVAnalysis', av = TRUE){
   # Investigates the COV of the estimated connectivity in the Group, and outputs the 95% CI for each Metric
   #' @param g defines the group to analyze
   #' @param metric defines the metric to analyze, either 'OD' or 'DM1'
@@ -1768,13 +1767,14 @@ COVAnalysis(g = 'fcn', modelloc = '/N/slate/conlcorn/SexLinkedProject/FinalModel
   #' @param av defines if we are using the average data or not
   #' @return a data frame with the COV for each region, and the 95% CI for each region
   #' Current Issue: The CI for our OD metric is too wide to gleam any insights
-  if(!av) {
-    warning("Not Supported Yet")
-    return()
-  }
-  else{
-    gname <- paste0('Average_',g,'_COV.rds')
-    
+  if (!av) {
+    # For non-averaged data, load the model and extract TAC, then compute COV for each region
+    gname <- paste0("ADNI_OD_", g, "_mean_5e+05_10000.rdata")
+    data <- readRDS(file.path(modelloc, gname))
+    model <- data$model
+    gdata <- model$COV  
+  }else{
+    gname <- paste0('Average_', g, '_COV.rds')
     gdata <- readRDS(gname)
   }
 
@@ -2106,8 +2106,8 @@ if(!av) {
 #Best way to parse is to use the loc_matrix we know how to create, and then use the index in there to pull the data from the gdata matrix
 
 
-MCMC_Data1 <- g1data[,loc_matrix[region1, region2]] # Get the MCMC data for the specific region connection
-MCMC_Data2 <- g2data[,loc_matrix[region1, region2]] # Get the MCMC data for the specific region connection
+MCMC_Data1 <- g1data[,loc_matrix[region1, region2]] 
+MCMC_Data2 <- g2data[,loc_matrix[region1, region2]] 
 
 #plot this data in a density plot, with the region names as the title
 # find the MCMC value that is the mean for each group, and we want to plot that as a vertical line
@@ -2144,10 +2144,315 @@ dev.off() # Close the PDF device to save the plot
 
 } 
 
- 
+RegionTACMCMC <- function(g1,g2,region, modeldir,atlasloc,outputdir,av = FALSE,flip = FALSE)
+{
+#Works the same as RegionMCMC, but uses the TAC data instead of UVC
+  #' @param g defines the group to analyze
+  #' @param region1 defines the first region to analyze, can either be a number or a name
+  #' @param region2 defines the second region to analyze, , can either be a number or a name
+  #' @param modeldir defines the location of the models
+  #' @param outputdir defines the location to save the results
+  #' @param av defines if we are using the average data or not
+  #' @return a density plot of the MCMC data for the specific region connection, with the region names as the title
+  
+# first check if the region exisits in the final_df$ROI vector, if not, stop the function
+load(atlasloc)
 
-LobeHeatmap(g1 = 'fcn',g2 = 'fmci', lobe ="Parietal",modelloc ='~/Documents/Work/FinalFiles/500k',atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',  outputloc = '~/Documents/Work/FinalLobe/Parietal', av = FALSE)
+#Function can use number or name for region, so we need to check if the region is a number or a name
+if(is.numeric(region)) {
+  region_name <- final_df$ROI[region]
+} else {
+  region_name <- region
+  # we need to get the index of the region name in the final_df$ROI vector
+  region <- which(final_df$ROI == region_name)
+}
+ 
+  if(length(region) == 0){
+    warning(region)
+    warning(region_name)
+    stop("Issue with region name, Need to fix")
+  } 
+  
+#Load the data from the model
+setwd(modeldir)
+if(av)
+{
+  stop("Average Is not supported yet, Though I doubt we will use this function for the average data")
+}else{
+  g1name <- paste0("ADNI_OD_", g1, "_mean_5e+05_10000.rdata")
+  g1data <- readRDS(g1name)
+  model1 <- g1data$model
+  g1data <- model1$TAC
+
+  g2name <- paste0("ADNI_OD_", g2, "_mean_5e+05_10000.rdata")
+  g2data <- readRDS(g2name)
+  model2 <- g2data$model
+  g2data <- model2$TAC
+}
+#grab the tau and Amy data from the specific region
+#We now have a 50,000x168 matrix
+
+  tauindex <- region*2-1
+  AmyIndex <- region*2
+  # use these indices to get the data from the g1data and g2data matrices
+  tau_Data1 <- g1data[, tauindex] 
+  tau_Data2 <- g2data[, tauindex] 
+  Amy_Data1 <- g1data[, AmyIndex] 
+  Amy_Data2 <- g2data[, AmyIndex] 
+
+  #plot this data in a density plot, with the region names as the title
+  # find the MCMC value that is the mean for each group, and we want to plot that as a vertical line
+  mean_tau1 <- mean(tau_Data1, na.rm = TRUE)
+  mean_tau2 <- mean(tau_Data2, na.rm = TRUE)
+  mean_Amy1 <- mean(Amy_Data1, na.rm = TRUE)
+  mean_Amy2 <- mean(Amy_Data2, na.rm = TRUE)
+
+  if (!dir.exists(outputdir)) dir.create(outputdir, recursive = TRUE)
+  setwd(outputdir)
+  # Open PDF device to save the plot
+  fname <- paste0(g1, "_",g2, "_", region_name, "_TAC_MCMC_density_plot.pdf")
+   pdf(file = fname, width = 7, height = 3) # Increase width/height for more space
+  # Plot the density plot for Tau
+  d1_tau <- density(tau_Data1)
+  d2_tau <- density(tau_Data2)
+
+  d1_amy <- density(Amy_Data1)
+  d2_amy <- density(Amy_Data2)
+  #get the max y value for the density plots
+  ylim_max <- max(d1_tau$y, d2_tau$y, d1_amy$y, d2_amy$y)
+  # We want to make the plot a bit narrower, so we can see the density curves better
+  # We can do this be setting the xlim to 
+  # Color-blind-safe color palette
+  cb_colors <- c("tau1" = "#56B4E9",  # CU Tau (light blue)
+                 "amy1" = "#009E73",  # CU Amyloid (teal)
+                 "tau2" = "#E69F00",  # MCI Tau (orange)
+                 "amy2" = "#D55E00")  # MCI Amyloid (vermillion)
+  
+  # Determine legend based on group
+  if (g1 == 'fcn') {
+    leg <- c("Female CU Tau", "Female CU Amyloid", "Female MCI Tau", "Female MCI Amyloid")
+  } else {
+    leg <- c("Male CU Tau", "Male CU Amyloid", "Male MCI Tau", "Male MCI Amyloid")
+  }
+  
+  # Main plot
+  plot(d1_tau, 
+       main = paste(" "),
+       xlab = "Estimated Value", ylab = "Density", 
+       col = cb_colors["tau1"], lwd = 2, 
+       xlim = range(c(tau_Data1, tau_Data2,Amy_Data1,Amy_Data2), na.rm = TRUE),
+       ylim = c(0, ylim_max),
+       cex.lab = 1.4,   # Increase axis label size
+       cex.axis = 1.3,  # Increase axis tick label size
+       cex.main = 0.01   # Increase main title size
+  )
+  
+  # Add density curves
+  lines(d2_tau, col = cb_colors["tau2"], lwd = 2)
+  lines(d1_amy, col = cb_colors["amy1"], lwd = 2)
+  lines(d2_amy, col = cb_colors["amy2"], lwd = 2)
+  
+  # Add vertical mean lines (dashed)
+  abline(v = mean_tau1, col = cb_colors["tau1"], lty = 2, lwd = 2)
+  abline(v = mean_tau2, col = cb_colors["tau2"], lty = 2, lwd = 2)
+  abline(v = mean_Amy1, col = cb_colors["amy1"], lty = 2, lwd = 2)
+  abline(v = mean_Amy2, col = cb_colors["amy2"], lty = 2, lwd = 2)
+  
+  # Add legend
+ # legend("topright", 
+     #    legend = leg, 
+     #    col = cb_colors, 
+     #    lwd = 2,
+    #3     lty = 1,
+    #     bg = "white")
+  
+  
+dev.off()
+
+}
+
+#_________________________________________________________
+LobeHeatmap(g1 = 'fcn',g2 = 'fmci', lobe ="Subcortical",modelloc ='~/Documents/Work/FinalFiles/500k',atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',  outputloc = '~/Documents/Work/FinalLobe/Subcortical', av = FALSE)
 LobeHeatmap(g1 = 'fcn',g2 = 'fmci', lobe ="Occipital",modelloc ='~/Documents/Work/FinalFiles/500k',atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',  outputloc = '~/Documents/Work/plotting/500k/Lobe/Occipital', av = FALSE)
 
-RegionMCMC(g1 = 'mcn',g2 = 'mmci',region = 'lh-postcentral',region2 = 'lh-precuneus', modeldir = '~/Documents/Work/FinalFiles/500k' ,atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',outputdir = '~/Documents/Work/FinalLobe/Frontal',av = FALSE)
-RegionMCMC(g1 = 'mcn',g2 = 'mmci',region = 'rh-lateralorbitofrontal',region2 = 'rh-medialorbitofrontal', modeldir = '~/Documents/Work/FinalFiles/500k' ,atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',outputdir = '~/Documents/Work/FinalLobe/Frontal',av = FALSE)
+RegionMCMC(g1 = 'fcn',g2 = 'fmci',region = 'lh-lateraloccipital',region2 = 'rh-pericalcarine', modeldir = '~/Documents/Work/FinalFiles/500k' ,atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',outputdir = '~/Documents/Work/FinalLobe/Occipital',av = FALSE)
+RegionMCMC(g1 = 'fcn',g2 = 'fmci',region = 'rh-entorhinal',region2 = 'rh-parahippocampal', modeldir = '~/Documents/Work/FinalFiles/500k' ,atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds',outputdir = '~/Documents/Work/FinalLobe/Temporal',av = FALSE)
+#_____________________________________________________________
+
+
+DifferenceComparasionUVPM <- function(modeldir, atlasloc) {
+  # Large function to investigate the trends within the differences between the groups
+  # Overall function
+  # Compute the count of regions that display increases and decreases in connectivity between the CU and MCI for both males and females for both UVPM 
+  # We then report the count of those, and how each region is affected by the differences in connectivity
+  # IE: if region 34 and 43 has an increase in connectivity for females, but a decrease in males, we report that.
+
+  # in total we need to report the following:
+  # 1. The count of regions in both males and females that showed a decrease and increase in connectivity
+  # 2. Find the regions that matched in their increase/decrease in connectivity 
+  # 3. Print the count of the regions that differed in their increase/decrease in connectivity
+
+  # Load the required data
+  load(atlasloc)
+
+  # Helper: get upper triangle indices (excluding diagonal)
+  get_upper_tri_indices <- function(n) {
+    which(upper.tri(matrix(0, n, n)), arr.ind = TRUE)
+  }
+
+  # Load UVPM data for each group
+  setwd(modeldir)
+  fcn <- readRDS("ADNI_OD_fcn_mean_5e+05_10000.rdata")$model$UVPM
+  fmci <- readRDS("ADNI_OD_fmci_mean_5e+05_10000.rdata")$model$UVPM
+  mcn <- readRDS("ADNI_OD_mcn_mean_5e+05_10000.rdata")$model$UVPM
+  mmci <- readRDS("ADNI_OD_mmci_mean_5e+05_10000.rdata")$model$UVPM
+
+  # Compute difference matrices
+  diff_female <- fcn - fmci
+  diff_male   <- mcn - mmci
+
+  # Get upper triangle indices
+  upper_idx <- get_upper_tri_indices(nrow(fcn))
+
+  # For each connection, determine if difference is positive (increase), negative (decrease), or zero (no change)
+  sign_female <- sign(diff_female[upper_idx])
+  sign_male   <- sign(diff_male[upper_idx])
+
+  # 1. Count increases and decreases for each group
+  female_increase <- sum(sign_female > 0)
+  female_decrease <- sum(sign_female < 0)
+  male_increase   <- sum(sign_male > 0)
+  male_decrease   <- sum(sign_male < 0)
+
+  cat("Female: Increase =", female_increase, ", Decrease =", female_decrease, "\n")
+  cat("Male:   Increase =", male_increase,   ", Decrease =", male_decrease, "\n")
+
+  # 2. Find regions that matched in their increase/decrease
+  match_increase <- sum(sign_female > 0 & sign_male > 0)
+  match_decrease <- sum(sign_female < 0 & sign_male < 0)
+  match_none     <- sum(sign_female == 0 & sign_male == 0)
+
+  cat("Connections with increase in both: ", match_increase, "\n")
+  cat("Connections with decrease in both: ", match_decrease, "\n")
+  cat("Connections with no change in both: ", match_none, "\n")
+
+  # 3. Count regions that differed (one increased, one decreased)
+  diff_opposite <- sum((sign_female > 0 & sign_male < 0) | (sign_female < 0 & sign_male > 0))
+  cat("Connections with opposite direction (increase in one, decrease in other): ", diff_opposite, "\n")
+}
+
+DifferenceComparasionCI <- function(modelloc, atlasloc) {
+  # Compare the 95% CI of the UVC data for all connections between CU and MCI for both males and females
+
+  # Helper: get upper triangle indices (excluding diagonal)
+  get_upper_tri_indices <- function(n) {
+    which(upper.tri(matrix(0, n, n)), arr.ind = TRUE)
+  }
+
+  # Helper: compute 95% CI for each connection (column)
+  compute_ci <- function(UVC) {
+    t(apply(UVC, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+  }
+
+  # Load the required data
+  load(atlasloc)
+  setwd(modelloc)
+  # Load UVC data for each group
+  fcn_UVC <- readRDS("ADNI_OD_fcn_mean_5e+05_10000.rdata")$model$UVC
+  fmci_UVC <- readRDS("ADNI_OD_fmci_mean_5e+05_10000.rdata")$model$UVC
+  mcn_UVC <- readRDS("ADNI_OD_mcn_mean_5e+05_10000.rdata")$model$UVC
+  mmci_UVC <- readRDS("ADNI_OD_mmci_mean_5e+05_10000.rdata")$model$UVC
+
+  # Compute 95% CI for each connection (columns)
+  ci_fcn <- compute_ci(fcn_UVC)
+  ci_fmci <- compute_ci(fmci_UVC)
+  ci_mcn <- compute_ci(mcn_UVC)
+  ci_mmci <- compute_ci(mmci_UVC)
+
+  # Build loc_matrix to map (i,j) to column index in UVC/CI
+  loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  idx <- 1
+  for (j in 2:84) {
+    for (i in 1:(j - 1)) {
+      loc_matrix[i, j] <- idx
+      idx <- idx + 1
+    }
+  }
+  upper_idx <- get_upper_tri_indices(84)
+  n_conn <- nrow(upper_idx)
+
+  # For each connection, determine direction of difference based on non-overlapping CIs
+  compare_ci_direction <- function(ci1, ci2) {
+    # Returns 1 if ci1 > ci2 (no overlap, ci1 above), -1 if ci1 < ci2 (no overlap, ci1 below), 0 if overlap
+    if (!max(ci1[1], ci2[1]) <= min(ci1[2], ci2[2])) {
+      if (ci1[2] <= ci2[1]) return(-1) # ci1 lower
+      if (ci1[1] >= ci2[2]) return(1)  # ci1 higher
+    }
+    return(0)
+  }
+
+  # For each connection, compare fcn vs fmci and mcn vs mmci
+  sign_female <- integer(n_conn)
+  sign_male <- integer(n_conn)
+  for (k in seq_len(n_conn)) {
+    i <- upper_idx[k, 1]
+    j <- upper_idx[k, 2]
+    col_idx <- loc_matrix[i, j]
+    sign_female[k] <- compare_ci_direction(ci_fcn[col_idx, ], ci_fmci[col_idx, ])
+    sign_male[k]   <- compare_ci_direction(ci_mcn[col_idx, ], ci_mmci[col_idx, ])
+  }
+
+  # 1. Count increases and decreases for each group
+  female_increase <- sum(sign_female > 0)
+  female_decrease <- sum(sign_female < 0)
+  male_increase   <- sum(sign_male > 0)
+  male_decrease   <- sum(sign_male < 0)
+
+  cat("Female (CI): Increase =", female_increase, ", Decrease =", female_decrease, "\n")
+  cat("Male   (CI): Increase =", male_increase,   ", Decrease =", male_decrease, "\n")
+
+  # 2. Find connections that matched in their increase/decrease
+  match_increase <- sum(sign_female > 0 & sign_male > 0)
+  match_decrease <- sum(sign_female < 0 & sign_male < 0)
+  match_none     <- sum(sign_female == 0 & sign_male == 0)
+
+  cat("Connections with CI increase in both: ", match_increase, "\n")
+  cat("Connections with CI decrease in both: ", match_decrease, "\n")
+  cat("Connections with CI no change in both: ", match_none, "\n")
+
+  # Additional: where one is above 0 and the other is 0, and vice versa
+  female_inc_male_none <- sum(sign_female > 0 & sign_male == 0)
+  male_inc_female_none <- sum(sign_male > 0 & sign_female == 0)
+  female_dec_male_none <- sum(sign_female < 0 & sign_male == 0)
+  male_dec_female_none <- sum(sign_male < 0 & sign_female == 0)
+
+  cat("Connections with CI increase in female, no change in male: ", female_inc_male_none, "\n")
+  cat("Connections with CI increase in male, no change in female: ", male_inc_female_none, "\n")
+  cat("Connections with CI decrease in female, no change in male: ", female_dec_male_none, "\n")
+  cat("Connections with CI decrease in male, no change in female: ", male_dec_female_none, "\n")
+
+  # 3. Count connections that differed (one increased, one decreased)
+  diff_opposite <- sum((sign_female > 0 & sign_male < 0) | (sign_female < 0 & sign_male > 0))
+  cat("Connections with CI opposite direction (increase in one, decrease in other): ", diff_opposite, "\n")
+}
+
+
+
+
+#_____________________________________________
+#Will be removed later, this is to generate all of the TAu Amyplots for signifigant regions
+
+#List of regions for females
+fregions <- c("lh-rostralmiddlefrontal","lh-lateraloccipital","lh-fusiform")
+#list of regions for males
+mregions <- c('rh-lateralorbitofrontal',"rh-medialorbitofrontal",'rh-parahippocampal')
+
+if(TRUE){
+for(f in fregions) {
+  RegionTACMCMC(g1 = 'fcn', g2 = 'fmci', region = f, modeldir = '~/Documents/Work/FinalFiles/500k', atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds', outputdir = '~/Documents/Work/plotting/FemaleTAC', av = FALSE)
+}
+for(m in mregions) {
+  RegionTACMCMC(g1 = 'mcn', g2 = 'mmci', region = m, modeldir = '~/Documents/Work/FinalFiles/500k', atlasloc = '~/Documents/Work/FinalFiles/fixed/finalAtlas.rds', outputdir = '~/Documents/Work/plotting/maleTAC', av = FALSE)
+}
+}
+
