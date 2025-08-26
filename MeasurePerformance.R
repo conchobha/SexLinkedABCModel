@@ -2456,3 +2456,430 @@ for(m in mregions) {
 }
 }
 
+
+
+
+
+
+
+
+OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
+                    atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+                    modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
+                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
+                    ) {
+  #' @param g1: The first group to be used in the heatmap
+  #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
+  #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output. Use Average for most final plots 
+  #' @param order: If true, it will order the heatmap by the regions of interest. If false, it will not order the heatmap. Be sure to have an atlas file
+  #' @param range: For the subject heatmap, it allows you to give a legend range, if NA it will create one automatically
+  #' @param modeldir: The directory where the model outputs are stored. If using av, point it to where the average data is stored
+  #' @param outputdir: The directory where the heatmap will be saved\
+  
+  #' @description A universal function for making heatmaps that compared total level heatmap trends. The main goal is to first find significant regions/connections, and then determine how they differ between males and females, then plot the results in a heatmap
+  library(corrplot)
+  Flag <- FALSE # Flag to determine if we are doing a comparison map or not
+  
+  center_matrix <- function(mat) {
+    # Calculate the overall mean of all elements
+    mat_mean <- mean(mat)
+    
+    # If the mean is already zero, return the matrix unchanged
+    if(abs(mat_mean) <= 0.001)  {
+      print("Mean is very close to 0")
+      return(mat)
+    }
+    
+    # Subtract the mean from all elements to center the matrix
+    centered_mat <- mat - mat_mean
+    print("Mean is not equal to 0, scaling matrix")
+    print(paste("Old mean was ", mat_mean))
+    return(centered_mat)
+  }
+  
+  
+  
+  reorder <- function(matrix_to_reorder, atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds' ) { #function to reorder the matrix based on a given atlas
+    # Load the required data
+    load(atlasloc)
+
+
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+
+    return(reordered_mat)
+  }
+
+  add_RSN_borders <- function(atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds') { #function to add the borders to the heatmap if we are ordering
+    load(atlasloc)
+    unique_groups <- unique(final_df[order(final_df$LOBE), ])
+    group <- unique(unique_groups$LOBE)
+    # Manually figure out the rectangles
+    group_ranges <- list(
+      list(name = "Cingulate", range = c(1, 8)),
+      list(name = "Frontal", range = c(9, 30)),
+      list(name = "Insular", range = c(31, 32)),
+      list(name = "Occipital", range = c(33, 40)),
+      list(name = "Parietal", range = c(41, 50)),
+      list(name = "Subcortical", range = c(51, 64)),
+      list(name = "Temporal", range = c(65, 82))
+    )
+    ymax <- 84
+    ymin <- 1
+
+    for (group in group_ranges) {
+      range <- group$range
+      flipped_ybottom <- ymax - (range[2] + 0.5 - ymin)
+      flipped_ytop <- ymax - (range[1] - 0.5 - ymin)
+
+      rect(
+        xleft = range[1] - 0.5,
+        ybottom = flipped_ybottom,
+        xright = range[2] + 0.5,
+        ytop = flipped_ytop,
+        border = "black",
+        lwd = 2
+      )
+
+      text_width <- strwidth(group$name, cex = 1.5) * 1.1 # Slightly larger for padding
+      text_height <- strheight(group$name, cex = 1.5) * 1.1
+
+      # Text position
+      text_x <- range[2] + 10
+      text_y <- .5 + (flipped_ybottom + flipped_ytop) / 2
+
+      # Draw yellow rectangle as a highlight behind text
+      rect(
+        xleft = text_x - text_width / 2,
+        ybottom = text_y - text_height / 2,
+        xright = text_x + text_width / 2,
+        ytop = text_y + text_height / 2,
+        col = "yellow", # Highlight color
+        border = NA # No border to keep it clean
+      )
+
+      # Draw text on top of the rectangle
+      text(
+        x = text_x,
+        y = text_y,
+        labels = group$name,
+        cex = 1.5,
+        col = "black",
+        adj = c(0.5, 0.5) # Centered alignment
+      )
+    }
+  }
+
+  determineCI <- function(UVC1, UVC2)
+  {
+    hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+    hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+
+     # Create an 84x84 matrix filled with zeros
+    loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+    index <- 1
+    for (j in 2:84) { # Start from the second column
+      for (i in 1:(j - 1)) { # Only fill below the diagonal
+        loc_matrix[i, j] <- index
+        index <- index + 1
+     }
+    }
+
+    # We can use this matrix to pull the proper CI's for each connection, then return the matrix to be made into the heatmap
+    # Use the number stored in the loc_matrix to pull the CI's from the hi.g1 and hi.g2 matrices
+    matrix_data <- matrix(0, nrow = 84, ncol = 84)
+    for (i in 1:84) {
+      for (j in 1:84) {
+        n <- loc_matrix[i, j]
+        if (n == 0) next
+        
+        tmp1 <- hi.g1[n, ]
+        tmp2 <- hi.g2[n, ]
+        if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+          if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+            matrix_data[i, j] <- 1
+          } else if (tmp1[1] >= tmp2[2]) {
+            matrix_data[i, j] <- -1
+          } 
+          }
+        }
+      }
+    # We need to make sure the matrix is symmetric
+    for (i in 1:nrow(matrix_data)) {
+      for (j in 1:ncol(matrix_data)) {
+        if (i != j) {
+          # Check if matrix_data[i, j] is zero but matrix_data[j, i] is non-zero
+          if (matrix_data[i, j] == 0 && matrix_data[j, i] != 0) {
+            matrix_data[i, j] <- matrix_data[j, i]
+          }
+          # Check if matrix_data[j, i] is zero but matrix_data[i, j] is non-zero
+          else if (matrix_data[j, i] == 0 && matrix_data[i, j] != 0) {
+            matrix_data[j, i] <- matrix_data[i, j]
+          }
+        }
+      }
+    }
+    return(matrix_data)
+  }
+
+  # Load the required data
+  load(atlasloc)
+  setwd(modeldir)
+  if(av) {
+    stop("Average data not supported yet")
+  }else{
+    fcn <- readRDS("ADNI_OD_fcn_mean_5e+05_10000.rdata")$model$UVC
+    fmci <- readRDS("ADNI_OD_fmci_mean_5e+05_10000.rdata")$model$UVC
+    mcn <- readRDS("ADNI_OD_mcn_mean_5e+05_10000.rdata")$model$UVC
+    mmci <- readRDS("ADNI_OD_mmci_mean_5e+05_10000.rdata")$model$UVC
+  }
+  # Determine the 95% CI overlap for both males and females
+  female <- determineCI(fcn, fmci)
+  male <- determineCI(mcn, mmci)
+  # Determine which differ
+  #nine total states
+  # 0 = no change in both (both = 0)
+  # 1 = increase in both (both = 1)
+  # -1 = decrease in both (both = -1)
+  # 2 = increase in female, no change in males
+  # -2 = decrease in female, no change in males
+  # 3 = increase in males, no change in females
+  # -3 = decrease in males, no change in females
+  # 4 = increase in females, decrease in males
+  # -4 = decrease in females, increase in males 
+  combined <- matrix(0, nrow = 84, ncol = 84)
+  for(i in 1:84) {
+    for(j in 1:84) {
+      f <- female[i, j]
+      m <- male[i, j]
+      if(f == 0 & m == 0) combined[i, j] <- 0
+      else if(f == 1 & m == 1) combined[i, j] <- 1
+      else if(f == -1 & m == -1) combined[i, j] <- -1
+      else if(f == 1 & m == 0) combined[i, j] <- 2
+      else if(f == -1 & m == 0) combined[i, j] <- -2
+      else if(f == 0 & m == 1) combined[i, j] <- 3
+      else if(f == 0 & m == -1) combined[i, j] <- -3
+      else if(f == 1 & m == -1) combined[i, j] <- 4
+      else if(f == -1 & m == 1) combined[i, j] <- -4
+    }  
+  }
+
+  # present this as a heatmap in the output directory
+  if (!dir.exists(o)) dir.create(o, recursive = TRUE)
+  setwd(o)
+  # set up the color palette
+  my_palette <- c(
+    "#08306B",  # -4: Decrease in females, increase in males (deep blue)
+    "#2171B5",  # -3: Decrease in males only (blue)
+    "#6BAED6",  # -2: Decrease in females only (light blue)
+    "#BDD7E7",  # -1: Decrease in both (very light blue)
+    "#FFFFFF",  #  0: No change in both
+    "#FEE0D2",  #  1: Increase in both (light red-pink)
+    "#FC9272",  #  2: Increase in females only (soft orange-pink)
+    "#FB6A4A",  #  3: Increase in males only (medium orange-red)
+    "#CB181D"   #  4: Increase in females, decrease in males (deep red)
+  )
+  
+  # set up the breaks
+  breaks <- c(-4.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5)
+  # if we are ordering, reorder the matrix
+  if(order) combined <- reorder(combined, atlasloc)
+
+  # Create the heatmap
+  pdf(file = paste0("OverallHeatmap_", metric, ifelse(order, "_Ordered", "_Unordered"), ".pdf"), width = 10, height = 8)
+  corrplot(combined,
+             method = "color",
+             col = my_palette,
+             tl.pos = "n",   # Remove axis labels
+             cl.pos = "n",   # Remove color legend
+             is.corr = FALSE,
+             col.lim = c(-4, 4)   # This is important! Map -1 to +1
+    )
+  if(order) add_RSN_borders(atlasloc)
+  # Add custom legend
+  legend(
+    "topright",
+    legend = c(
+      "Decrease in females, increase in males",  # -4
+      "Decrease in males only",                  # -3
+      "Decrease in females only",                # -2
+      "Decrease in both",                        # -1
+      "No change in both",                       #  0
+      "Increase in both",                        #  1
+      "Increase in females only",                #  2
+      "Increase in males only",                  #  3
+      "Increase in females, decrease in males"   #  4
+    ),
+    fill = c(
+      "#08306B",  # -4
+      "#2171B5",  # -3
+      "#6BAED6",  # -2
+      "#BDD7E7",  # -1
+      "#FFFFFF",  #  0
+      "#FEE0D2",  #  1
+      "#FC9272",  #  2
+      "#FB6A4A",  #  3
+      "#CB181D"   #  4
+    ),
+    bty = "n", 
+    cex = 1.2
+  )
+  
+      dev.off()
+    }
+
+
+
+
+OutLobeConnections <- function(g1,g2,modelloc = '~/Documents/Work/FinalFiles/500k' ,atlasloc= '~/Documents/Work/FinalFiles/finalAtlas.rds',outputloc ='~/Documents/Work/plots/Proportions',av = FALSE)
+{
+#Function to generate a small heat map of the proportion (both positive and negative) of connections between lobes that are significant
+  #' @param g1 defines the first group to analyze
+  #' @param g2 defines the second group to analyze #TODO: Change this to just pull males and females, since I doubt we'll ever be doing within CU or MCI
+  #' @param modelloc defines the location of the models
+  #' @param atlasloc defines the location of the atlas
+  #' @param outputloc defines the location to save the results
+  #' @param av defines if we are using the average data or not
+  #' @return a heatmap of the proportion of connections between lobes that are signifigant
+  #' 
+library(corrplot)
+# Define the boundaries of lobes 
+reorder <- function(matrix_to_reorder, atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds' ) { #function to reorder the matrix based on a given atlas
+    # Load the required data
+    load(atlasloc)
+
+
+    # Sort the data frame by the 'LOBE' column
+    sorted_df <- final_df[order(final_df$LOBE), ]
+
+    # Reorder the rows based on the sorted indices
+    sorted_indices <- sorted_df$row_number
+
+    # Reorder both rows and columns of the matrix
+    reordered_mat <- matrix_to_reorder[sorted_indices, sorted_indices]
+
+    return(reordered_mat)
+  } 
+
+determineCI <- function(UVC1, UVC2)
+  {
+    hi.g1 <- t(apply(UVC1, 2, function(x) quantile(x, probs = c(0.025, 0.975)))) # returns a 84x83/2 matrix, which is the CI's for each unique connection
+    hi.g2 <- t(apply(UVC2, 2, function(x) quantile(x, probs = c(0.025, 0.975))))
+
+     # Create an 84x84 matrix filled with zeros
+    loc_matrix <- matrix(0, nrow = 84, ncol = 84)
+  
+  # Start filling the upper triangle downwards, column by column
+    index <- 1
+    for (j in 2:84) { # Start from the second column
+      for (i in 1:(j - 1)) { # Only fill below the diagonal
+        loc_matrix[i, j] <- index
+        index <- index + 1
+     }
+    }
+
+    # We can use this matrix to pull the proper CI's for each connection, then return the matrix to be made into the heatmap
+    # Use the number stored in the loc_matrix to pull the CI's from the hi.g1 and hi.g2 matrices
+    matrix_data <- matrix(0, nrow = 84, ncol = 84)
+    for (i in 1:84) {
+      for (j in 1:84) {
+        n <- loc_matrix[i, j]
+        if (n == 0) next
+        
+        tmp1 <- hi.g1[n, ]
+        tmp2 <- hi.g2[n, ]
+        if (max(tmp1[1], tmp2[1]) > min(tmp1[2], tmp2[2])) { #checks if they don't overlap
+          if (tmp1[2] <= tmp2[1]) { #checks if g2 is larger or smaller than g1
+            matrix_data[i, j] <- 1
+          } else if (tmp1[1] >= tmp2[2]) {
+            matrix_data[i, j] <- -1
+          } 
+          }
+        }
+      }
+    # We need to make sure the matrix is symmetric
+    for (i in 1:nrow(matrix_data)) {
+      for (j in 1:ncol(matrix_data)) {
+        if (i != j) {
+          # Check if matrix_data[i, j] is zero but matrix_data[j, i] is non-zero
+          if (matrix_data[i, j] == 0 && matrix_data[j, i] != 0) {
+            matrix_data[i, j] <- matrix_data[j, i]
+          }
+          # Check if matrix_data[j, i] is zero but matrix_data[i, j] is non-zero
+          else if (matrix_data[j, i] == 0 && matrix_data[i, j] != 0) {
+            matrix_data[j, i] <- matrix_data[i, j]
+          }
+        }
+      }
+    }
+    return(matrix_data)
+  }
+
+  lobe_bounds <- list(
+    Cingulate = c(1, 8),
+    Frontal = c(9, 30),
+    Insular = c(31, 32),
+    Occipital = c(33, 40),
+    Parietal = c(41, 50),
+    Subcortical = c(51, 64),
+    Temporal = c(65, 82)
+  )
+
+  #Load the data
+  load(atlasloc)
+  setwd(modelloc)
+  if(!av)
+  {
+    g1data <- readRDS(paste0("ADNI_OD_", g1, "_mean_5e+05_10000.rdata"))$model$UVC
+    g2data <- readRDS(paste0("ADNI_OD_", g2, "_mean_5e+05_10000.rdata"))$model$UVC
+  }else stop("Average data not supported yet")
+  # Generate the CI, and do comparasions
+  matrix <- reorder(determineCI(g1data,g2data), atlasloc)
+  #for each boundary, the the proportion of postivie and negative connections
+  # Create a 7x7 matrix to store the proportions
+  pos_matrix <- matrix(0, nrow = 7, ncol = 7)
+  neg_matrix <- matrix(0, nrow = 7, ncol = 7)
+  rownames(pos_matrix) <- names(lobe_bounds)
+  colnames(pos_matrix) <- names(lobe_bounds)
+  rownames(neg_matrix) <- names(lobe_bounds)
+  colnames(neg_matrix) <- names(lobe_bounds)
+
+  for (i in 1:length(lobe_bounds)) {
+    for (j in 1:length(lobe_bounds)) {
+      lobe1 <- lobe_bounds[[i]]
+      lobe2 <- lobe_bounds[[j]]
+      sub_matrix <- matrix[lobe1[1]:lobe1[2], lobe2[1]:lobe2[2]]
+      total_connections <- length(sub_matrix)
+      pos_connections <- sum(sub_matrix == 1)
+      neg_connections <- sum(sub_matrix == -1)
+      pos_matrix[i, j] <- pos_connections / total_connections
+      neg_matrix[i, j] <- neg_connections / total_connections
+    }
+  }
+  #Set values = 0 to NA for better plotting
+  pos_matrix[pos_matrix == 0] <- NA
+  neg_matrix[neg_matrix == 0] <- NA
+  o <- outputloc 
+  if (!dir.exists(o)) dir.create(o, recursive = TRUE)
+  setwd(o)
+  pdf(file= paste(g1,g2,"_pos.pdf"))
+  corrplot(pos_matrix,is.corr = FALSE,method= 'color',addCoef.col = 'grey50',na.label = ' ',cl.pos = 'n',col = COL1('Oranges'))
+  dev.off()
+  pdf(file= paste(g1,g2,"_neg.pdf"))
+  corrplot(neg_matrix,is.corr = FALSE,method= 'color',addCoef.col = 'grey50',na.label = ' ',cl.pos = 'n',col = COL1('Blues'))
+  dev.off()
+}
+
+
+
+
+
+
