@@ -2465,8 +2465,8 @@ for(m in mregions) {
 
 OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
                     atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
-                    modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
-                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
+                    modeldir = '~/Documents/Work/FinalFiles/500k',
+                    outputdir = '~/Documents/Work/plots/Over'
                     ) {
   #' @param g1: The first group to be used in the heatmap
   #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
@@ -2478,6 +2478,7 @@ OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
   
   #' @description A universal function for making heatmaps that compared total level heatmap trends. The main goal is to first find significant regions/connections, and then determine how they differ between males and females, then plot the results in a heatmap
   library(corrplot)
+  o <- outputdir 
   Flag <- FALSE # Flag to determine if we are doing a comparison map or not
   
   center_matrix <- function(mat) {
@@ -2661,32 +2662,35 @@ OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
       f <- female[i, j]
       m <- male[i, j]
       if(f == 0 & m == 0) combined[i, j] <- 0
-      else if(f == 1 & m == 1) combined[i, j] <- 1
-      else if(f == -1 & m == -1) combined[i, j] <- -1
+      #else if(f == 1 & m == 1) combined[i, j] <- 1
+      #else if(f == -1 & m == -1) combined[i, j] <- -1
       else if(f == 1 & m == 0) combined[i, j] <- 2
       else if(f == -1 & m == 0) combined[i, j] <- -2
       else if(f == 0 & m == 1) combined[i, j] <- 3
       else if(f == 0 & m == -1) combined[i, j] <- -3
-      else if(f == 1 & m == -1) combined[i, j] <- 4
-      else if(f == -1 & m == 1) combined[i, j] <- -4
+      #else if(f == 1 & m == -1) combined[i, j] <- 4
+      #else if(f == -1 & m == 1) combined[i, j] <- -4
     }  
   }
 
   # present this as a heatmap in the output directory
+  
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
   # set up the color palette
   my_palette <- c(
     "#08306B",  # -4: Decrease in females, increase in males (deep blue)
-    "#2171B5",  # -3: Decrease in males only (blue)
-    "#6BAED6",  # -2: Decrease in females only (light blue)
-    "#BDD7E7",  # -1: Decrease in both (very light blue)
+    #"#2171B5",  # -3: Decrease in males only (blue)
+    "#1F77B4",  # -2: Decrease in females only (light blue)
+    #"#BDD7E7",  # -1: Decrease in both (very light blue)
     "#FFFFFF",  #  0: No change in both
-    "#FEE0D2",  #  1: Increase in both (light red-pink)
-    "#FC9272",  #  2: Increase in females only (soft orange-pink)
-    "#FB6A4A",  #  3: Increase in males only (medium orange-red)
+    #"#FEE0D2",  #  1: Increase in both (light red-pink)
+    "#FF7F0E",  #  2: Increase in females only (soft orange-pink)
+    #"#FB6A4A",  #  3: Increase in males only (medium orange-red)
     "#CB181D"   #  4: Increase in females, decrease in males (deep red)
   )
+
+  
   
   # set up the breaks
   breaks <- c(-4.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5)
@@ -2694,7 +2698,7 @@ OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
   if(order) combined <- reorder(combined, atlasloc)
 
   # Create the heatmap
-  pdf(file = paste0("OverallHeatmap_", metric, ifelse(order, "_Ordered", "_Unordered"), ".pdf"), width = 10, height = 8)
+  pdf(file = paste0("OverallHeatmap_", metric, ifelse(order, "_Ordered", "_Unordered"), ".pdf"), width = 12)
   corrplot(combined,
              method = "color",
              col = my_palette,
@@ -2706,27 +2710,27 @@ OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
   if(order) add_RSN_borders(atlasloc)
   # Add custom legend
   legend(
-    "topright",
+    "right",
     legend = c(
-      "Decrease in females, increase in males",  # -4
-      "Decrease in males only",                  # -3
-      "Decrease in females only",                # -2
-      "Decrease in both",                        # -1
+      #"Decrease in females, increase in males",  # -4
+      "Decrease in males",                  # -3
+      "Decrease in females",                # -2
+      #"Decrease in both",                        # -1
       "No change in both",                       #  0
-      "Increase in both",                        #  1
-      "Increase in females only",                #  2
-      "Increase in males only",                  #  3
-      "Increase in females, decrease in males"   #  4
+      #"Increase in both",                        #  1
+      "Increase in females",                #  2
+      "Increase in males"             #  3
+      #"Increase in females, decrease in males"   #  4
     ),
     fill = c(
       "#08306B",  # -4
-      "#2171B5",  # -3
-      "#6BAED6",  # -2
-      "#BDD7E7",  # -1
+      #"#2171B5",  # -3
+      "#1F77B4",  # -2
+      #"#BDD7E7",  # -1
       "#FFFFFF",  #  0
-      "#FEE0D2",  #  1
-      "#FC9272",  #  2
-      "#FB6A4A",  #  3
+      #"#FEE0D2",  #  1
+      "#FF7F0E",  #  2
+      #"#FB6A4A",  #  3
       "#CB181D"   #  4
     ),
     bty = "n", 
@@ -2736,7 +2740,8 @@ OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
       dev.off()
     }
 
-
+#08306B #Decrease in males
+#CB181D #Increase in males
 
 
 OutLobeConnections <- function(g1,g2,modelloc = '~/Documents/Work/FinalFiles/500k' ,atlasloc= '~/Documents/Work/FinalFiles/finalAtlas.rds',outputloc ='~/Documents/Work/plots/Proportions',av = FALSE)
@@ -2845,36 +2850,84 @@ determineCI <- function(UVC1, UVC2)
   matrix <- reorder(determineCI(g1data,g2data), atlasloc)
   #for each boundary, the the proportion of postivie and negative connections
   # Create a 7x7 matrix to store the proportions
-  pos_matrix <- matrix(0, nrow = 7, ncol = 7)
-  neg_matrix <- matrix(0, nrow = 7, ncol = 7)
-  rownames(pos_matrix) <- names(lobe_bounds)
-  colnames(pos_matrix) <- names(lobe_bounds)
-  rownames(neg_matrix) <- names(lobe_bounds)
-  colnames(neg_matrix) <- names(lobe_bounds)
+lobes <- c("CIN",  # Cingulate lobe
+           "FRO",  # Frontal lobe
+           "INS",  # Insular cortex
+           "OCC",  # Occipital lobe
+           "PAR",  # Parietal lobe
+           "SUB",  # Subcortical structures
+           "TMP")  # Temporal lobe
 
+# Initialize matrices
+pos_matrix <- matrix(0, nrow = length(lobes), ncol = length(lobes))
+neg_matrix <- matrix(0, nrow = length(lobes), ncol = length(lobes))
+
+# Assign row and column names
+rownames(pos_matrix) <- lobes
+colnames(pos_matrix) <- lobes
+rownames(neg_matrix) <- lobes
+colnames(neg_matrix) <- lobes
+
+  # only check the diag and the upper triangle, since the matrix is symmetric
+  # set the lower tri of the OG matrix to 0
+  matrix[lower.tri(matrix)] <- 0
+  total_pos <- sum(matrix == 1)
+  total_neg <- sum(matrix == -1)
   for (i in 1:length(lobe_bounds)) {
     for (j in 1:length(lobe_bounds)) {
       lobe1 <- lobe_bounds[[i]]
       lobe2 <- lobe_bounds[[j]]
       sub_matrix <- matrix[lobe1[1]:lobe1[2], lobe2[1]:lobe2[2]]
-      total_connections <- length(sub_matrix)
       pos_connections <- sum(sub_matrix == 1)
       neg_connections <- sum(sub_matrix == -1)
-      pos_matrix[i, j] <- pos_connections / total_connections
-      neg_matrix[i, j] <- neg_connections / total_connections
+      pos_matrix[i, j] <- pos_connections / total_pos
+      neg_matrix[i, j] <- neg_connections / total_neg
     }
   }
   #Set values = 0 to NA for better plotting
   pos_matrix[pos_matrix == 0] <- NA
   neg_matrix[neg_matrix == 0] <- NA
+
+  #We are using different colors for males and females, so set the color palettes for that
+  # Female: Orange for + and Cyan for -
+  # Male: Red for + and Blue for -
   o <- outputloc 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
+  if(g1 == 'fcn' & g2 == 'fmci') {
+    CyanPalette <- colorRampPalette(c("white", "cyan4"))
+    c1 = COL1('Oranges')
+    c2 = CyanPalette(200) 
+  
+  } else if (g1 == 'mcn' & g2 == 'mmci') {
+    c1 = COL1('Reds')
+    c2 = COL1('Blues')
+  } else {
+    stop("Invalid group combination")
+  }
   pdf(file= paste(g1,g2,"_pos.pdf"))
-  corrplot(pos_matrix,is.corr = FALSE,method= 'color',addCoef.col = 'grey50',na.label = ' ',cl.pos = 'n',col = COL1('Oranges'))
+  corrplot(
+    pos_matrix,
+    is.corr = FALSE,
+    method = 'color',
+    #addCoef.col = 'grey50',
+    na.label = ' ',
+    cl.pos = 'n',
+    col = c1,
+    tl.cex = 2.5  # Increase label size for row/col names
+  )
   dev.off()
   pdf(file= paste(g1,g2,"_neg.pdf"))
-  corrplot(neg_matrix,is.corr = FALSE,method= 'color',addCoef.col = 'grey50',na.label = ' ',cl.pos = 'n',col = COL1('Blues'))
+  corrplot(
+    neg_matrix,
+    is.corr = FALSE,
+    method = 'color',
+    #addCoef.col = 'grey50',
+    na.label = ' ',
+    cl.pos = 'n',
+    col = c2,
+    tl.cex = 2.5  # Increase label size for row/col names
+  )
   dev.off()
 }
 

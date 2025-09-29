@@ -362,7 +362,14 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, range =
     m[m < -1] <- -1
     # Define the color palette: blue for -1, white for 0, orange for 1
     color_palette <- colorRampPalette(c("#1F77B4", "white", "#FF7F0E"))(200)
-    
+    # Dr. Wang gave the idea to match the color scheme depending on male and female, so I'll test that 
+    if(g1 == 'mcn')
+    {
+      # Change the color palette to the male set that will be used in the overall Heatmap later on (MeasurePerformance.R)
+      #08306B #Decrease in males
+      #CB181D #Increase in males
+      color_palette <- colorRampPalette(c("#08306B", "white", "#CB181D"))(200)
+    }
     # Plot the matrix
     suppressWarnings({
     corrplot(m,
@@ -376,10 +383,15 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, range =
     })
     
     # Add a custom legend
+    if(g1 =='fcn'){
     legend("right", legend = c("Smaller", "Near no difference", "Larger"), 
            fill = c("#1F77B4", "#FFFFFF", "#FF7F0E"), 
            bty = "n", cex = 1.2)
-    
+    }else{
+      legend("right", legend = c("Smaller", "Near no difference", "Larger"), 
+             fill = c("#08306B", "#FFFFFF", "#CB181D"), 
+             bty = "n", cex = 1.2)
+    }
     
   }else {
     pdf(file = fname, width =8.5)
@@ -1249,3 +1261,54 @@ LobeHeatmap <- function(g1,g2, lobe = NA, modelloc, atlasloc, outputloc, av = TR
   dev.off() # Close the PDF device to save the plot
 }
 CI_SpiderPlot(g1 = 'fcn',g2 = 'fmci',metric = 'FA',modelloc = '~/Documents/Work/FinalFiles/Other',outputdir = '~/Documents/Work/FinalFiles/Other',av = FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
