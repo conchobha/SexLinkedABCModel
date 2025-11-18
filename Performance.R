@@ -11,11 +11,11 @@
 
 #APM 
 
-disgraph <- function(loc = '~/Downloads/APM') { # violin plot code 
+disgraph <- function(loc = '~/Documents/Work/FinalFiles/500k',outputloc = '~/Documents/Work/plots/APM',av = FALSE) { # violin plot code 
   setwd(loc)
-  grouplist <- c("fcn", "fmci", "mcn", "mmci")  # Change this to a vector
+  grouplist <- c("fcn",'fscd', "fmci","mcn",'mscd', "mmci")  # Change this to a vector
   datalist <- list()
-  
+  if(av){
   for (g in grouplist) {
     data <- readRDS(paste0('Average_', g, "_APM.rds"))
     APM <- data$APM
@@ -23,44 +23,40 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
     Av <- colMeans(matrix_data)
     datalist[[g]] <- Av
   }
-  
+  }else{
+    for(g in grouplist) datalist[[g]]  <- readRDS(paste0('ADNI_OD_', g, '_mean_5e+05_10000.rdata'))$model$APM
+    
+  } # Ends with a list, where each group is the name and holds a Nx1 matrix
   library(ggplot2)
   library(tidyr)
   library(dplyr)
+  library(forcats)
   
-  # Convert list to data frame
-  datalist_df <- stack(datalist)
-  colnames(datalist_df) <- c("value", "group")
   
   # Recode group names
   group_labels <- c(
     fcn = "Healthy Female",
+    fscd = "SCD Female",
     fmci = "Female MCI",
     mcn = "Healthy Male",
+    mscd = 'SCD Male',
     mmci = "Male MCI"
   )
-  
-  # Count number of datapoints per group
-  counts <- datalist_df %>%
-    group_by(group) %>%
-    summarise(n = n(), .groups = 'drop')
-  
-  # Create group labels with line break before n
-  counts$label <- paste0(group_labels[counts$group], "\n(n = ", counts$n, ")")
-  
-  # Join updated labels into datalist_df
-  datalist_df <- datalist_df %>%
-    left_join(counts, by = "group")
-  
-  # Set factor levels in the correct order
-  label_levels <- sapply(grouplist, function(g) {
-    paste0(group_labels[g], "\n(n = ", counts$n[counts$group == g], ")")
-  })
-  
-  datalist_df$label <- factor(datalist_df$label, levels = label_levels)
-  
+
+  # Convert the list to a data frame for ggplot
+  data_list <- bind_rows(lapply(names(datalist), function(name) {
+    data.frame(
+      label = paste0(group_labels[[name]], " (n=", length(datalist[[name]]), ")"),
+      value = datalist[[name]]
+    )
+  }))
+  # if outputloc doesn't exist, create it
+  if(!dir.exists(outputloc)) dir.create(outputloc, recursive = TRUE)
+  setwd(outputloc)
+  pdf(file = "APM_ViolinPlot.pdf", width = 10, height = 6)
+  #
   # Violin plot with group-specific n values in x-axis labels
-  ggplot(datalist_df, aes(x = label, y = value)) +
+  ggplot(data_list, aes(x = fct_inorder(label), y = value)) +
     geom_violin(fill = "gray85", color = "black", trim = FALSE) +
     geom_boxplot(width = 0.1, outlier.shape = NA, color = "black", fill = "white") +
     theme_minimal() +
@@ -72,6 +68,7 @@ disgraph <- function(loc = '~/Downloads/APM') { # violin plot code
       strip.text = element_text(size = 14),
       plot.title = element_text(size = 18, face = "bold")
     )
+  dev.off()
 }
 
 APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinkedProject/FinalModelStore")
@@ -103,7 +100,7 @@ APMTesting <- function(g1 = 'fcn',g2 = 'fmci',loc = "/N/slate/conlcorn/SexLinked
 
 
 Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", 
-                      group, av = TRUE, 
+                      group, av = FALSE, 
                       filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                       outputdir) {
   library(coda)
@@ -113,31 +110,34 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   model1 <- data$model
   UVPM1 <- model1$UVPM
   l <- data$sn / 10
-  UVC1 <- model1$UVC#[4500:7500, 90:100]
+  UVC1 <- model1$UVC[, 90:100]
   }else{
     UVC_name <- paste0("Average_",group,"_UVC.rds")
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
     UV <- readRDS(UVC_name)
-    if(group == 'fmci') UVC1 <- UV#[4500:5500, 90:100]
+    if(group == 'fmci') UVC1 <- UVC[, 90:100]
     else 
-    UVC1 <- UV[, 90:100]
+    UVC1 <- UVC[, 90:100]
     UVPM1 <- readRDS(UVPM_name)
-    l <- 200000/10
+    l <- 500000/10
   }
   # model1$TAC
   
   mc1 <- mcmc(data = UVC1, start = 1, end = nrow(UVC1), thin = 1)
+  #check if outputdir exists
+  if(!dir.exists(outputdir)) dir.create(outputdir, recursive = TRUE)
   setwd(outputdir)
-  pdf(file = paste0(group, "_Traceplot.pdf"))
+  pdf(file = paste0(group, "_Traceplot.pdf"),width = 4,height = 4)
   traceplot(mc1, ylab = "Covariance Estimate")
   dev.off()
 }
 
+
 Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, range = NA,
-                    atlasloc = '~/Documents/Work/ModelFiles/finalAtlas.rds',
-                    modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
-                    outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/HeatMaps_Final/"
-                    ) {
+                    atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+                    modeldir = "~/Documents/Work/FinalFiles/500k",
+                    outputdir = "~/Documents/Work/plots/SCD/fscd"
+                    ){
   #' @param g1: The first group to be used in the heatmap
   #' @param g2: The second group to be used in the heatmap, if NA, it will only use g1
   #' @param av: If true, it will use the average data, if false, it will use the raw data from a model output. Use Average for most final plots 
@@ -262,7 +262,8 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, range =
     
     }
   }
-  fname <- paste0(g1, "_heatmap2.pdf")
+  fname <- paste0(g1, "_heatmap2.pdf")  
+  outputdir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/plots/SCD/fscd"
   if (!is.na(g2)) {
     Flag <- TRUE
     fname <- paste0(g1, "_vs_", g2, "_heatmap.pdf")
@@ -417,6 +418,11 @@ Heatmap <- function(g1, g2 = NA, metric = "OD", av = TRUE, order = TRUE, range =
   if (order) add_RSN_borders(atlasloc = atlasloc)
   dev.off()
 }
+
+#Generate Heatmaps for our two SCD groups
+
+Heatmap(g1 = 'mscd', metric = 'OD', av = FALSE, order = TRUE,
+        modeldir = "~/Documents/Work/FinalFiles/500k")
 
 
 AverageCorr <- function(location = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/DimTesting/", group = "fcn",metric = 'OD', quiet = TRUE) {
@@ -742,14 +748,14 @@ CI_SpiderPlot <- function(g1 = "fcn", g2 = "fmci",metric = 'OD',
 
 
 
-CI <- function(group = "f", metric = "OD", modeldir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD/",atlasloc , av = TRUE, outputdir, lobe = NA) {
+CI <- function(group = "f", metric = "OD", modeldir =  '~/Documents/Work/FinalFiles/500k',atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds' , av = FALSE, outputdir = '~/Documents/Work/plots/Supp/CI', lobe = NA) {
   #This modified one instead is used to look at specific lobes, if no lobe is supplied, it will look at all lobes
   library(dplyr)
   setwd(modeldir) # Set the Directory to where we store the models
   
   if (!av) {
-    cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_1e+05_1000.rdata")
-    mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_1e+05_1000.rdata")
+    cn_name <- paste0("ADNI_", metric, "_", group, "cn_mean_250000_1000.rdata")
+    mci_name <- paste0("ADNI_", metric, "_", group, "mci_mean_5e+05_10000.rdata")
   } else {
     cn_UVC_name <- paste0("Average_", group, "cn_UVC.rds")
     cn_UVPM_name <- paste0("Average_", group, "cn_UVPM.rds")

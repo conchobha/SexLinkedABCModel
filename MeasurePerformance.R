@@ -216,7 +216,7 @@ subjectHeatmap <- function(group) {
 
 
 Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata", 
-                      group, av = TRUE, 
+                      group, av = FALSE, 
                       filedir = "/N/u/conlcorn/BigRed200/SexLinkedProject/output/FinalFiles/OD",
                       outputdir) {
   library(coda)
@@ -226,12 +226,12 @@ Traceplot <- function(modelname = "ADNI_Da_combined_mean_10000_1000.rdata",
   model1 <- data$model
   UVPM1 <- model1$UVPM
   l <- data$sn / 10
-  UVC1 <- model1$UVC#[4500:7500, 90:100]
+  UVC1 <- model1$UVC[, 90:100]
   }else{
     UVC_name <- paste0("Average_",group,"_UVC.rds")
     UVPM_name <- paste0("Average_",group,"_UVPM.rds")
     UV <- readRDS(UVC_name)
-    if(group == 'fmci') UVC1 <- UV#[4500:5500, 90:100]
+    if(group == 'fmci') UVC1 <- UV[, 90:100]
     else 
     UVC1 <- UV[, 90:100]
     UVPM1 <- readRDS(UVPM_name)
@@ -2144,7 +2144,9 @@ dev.off() # Close the PDF device to save the plot
 
 } 
 
-RegionTACMCMC <- function(g1,g2,region, modeldir,atlasloc,outputdir,av = FALSE,flip = FALSE)
+g1,g2,modelloc = '~/Documents/Work/FinalFiles/500k' ,atlasloc= '~/Documents/Work/FinalFiles/finalAtlas.rds',outputloc ='~/Documents/Work/plots/Proportions',av = FALSE
+
+RegionTACMCMC <- function(g1,g2,region, modeldir= '~/Documents/Work/FinalFiles/500k',atlasloc= '~/Documents/Work/FinalFiles/finalAtlas.rds',outputdir='~/Documents/Work/plots/TAC',av = FALSE,flip = FALSE)
 {
 #Works the same as RegionMCMC, but uses the TAC data instead of UVC
   #' @param g defines the group to analyze
@@ -2744,7 +2746,7 @@ OverallHeatmap <- function(metric = "OD", av = FALSE, order = TRUE, range = NA,
 #CB181D #Increase in males
 
 
-OutLobeConnections <- function(g1,g2,modelloc = '~/Documents/Work/FinalFiles/500k' ,atlasloc= '~/Documents/Work/FinalFiles/finalAtlas.rds',outputloc ='~/Documents/Work/plots/Proportions',av = FALSE)
+OutLobeConnections <- function(g1,g2,metric = 'OD',modelloc = '~/Documents/Work/FinalFiles/500k' ,atlasloc= '~/Documents/Work/FinalFiles/finalAtlas.rds',outputloc ='~/Documents/Work/plots/Proportions',av = FALSE)
 {
 #Function to generate a small heat map of the proportion (both positive and negative) of connections between lobes that are significant
   #' @param g1 defines the first group to analyze
@@ -2843,8 +2845,8 @@ determineCI <- function(UVC1, UVC2)
   setwd(modelloc)
   if(!av)
   {
-    g1data <- readRDS(paste0("ADNI_OD_", g1, "_mean_5e+05_10000.rdata"))$model$UVC
-    g2data <- readRDS(paste0("ADNI_OD_", g2, "_mean_5e+05_10000.rdata"))$model$UVC
+    g1data <- readRDS(paste0("ADNI_",metric,"_", g1, "_mean_2e+05_1000.rdata"))$model$UVC
+    g2data <- readRDS(paste0("ADNI_",metric,"_", g2, "_mean_2e+05_1000.rdata"))$model$UVC
   }else stop("Average data not supported yet")
   # Generate the CI, and do comparasions
   matrix <- reorder(determineCI(g1data,g2data), atlasloc)
@@ -2894,12 +2896,12 @@ colnames(neg_matrix) <- lobes
   o <- outputloc 
   if (!dir.exists(o)) dir.create(o, recursive = TRUE)
   setwd(o)
-  if(g1 == 'fcn' & g2 == 'fmci') {
+  if(startsWith(g1, 'f') & startsWith(g2, 'f')) {
     CyanPalette <- colorRampPalette(c("white", "cyan4"))
     c1 = COL1('Oranges')
     c2 = CyanPalette(200) 
   
-  } else if (g1 == 'mcn' & g2 == 'mmci') {
+  } else if (startsWith(g1, 'm') & startsWith(g2, 'm')) {
     c1 = COL1('Reds')
     c2 = COL1('Blues')
   } else {
@@ -2932,7 +2934,92 @@ colnames(neg_matrix) <- lobes
 }
 
 
+SCDInvest <- function()
+{
+  # A general function for calling heatmaps for SCD vs CU and SCD vs MCI
 
+  # The general Heatmap for SCD 
+  g <- c('fscd','mscd')
+
+  for(i in g)
+  {
+    # SCD group heatmap
+    Heatmap(g1 = i, g2 = NA, av = FALSE, order = TRUE, range = NA,
+            atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+            modeldir = '~/Documents/Work/FinalFiles/500k',
+            outputdir = paste0('~/Documents/Work/plots/SCD/',i)
+    )
+    # SCD vs CU
+    if(i == "fscd") {
+      Heatmap(g1 = 'fcn', g2 = i, av = FALSE, order = TRUE, range = NA,
+              atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+              modeldir = '~/Documents/Work/FinalFiles/500k',
+              outputdir = paste0('~/Documents/Work/plots/SCD/',i)
+      )
+    } else if(i == "mscd") {
+      Heatmap(g1 = 'mcn', g2 = i, av = FALSE, order = TRUE, range = NA,
+              atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+              modeldir = '~/Documents/Work/FinalFiles/500k',
+              outputdir = paste0('~/Documents/Work/plots/SCD/',i)
+      )
+    }
+    # SCD vs MCI
+    if(i == "fscd") {
+      Heatmap(g1 = i, g2 = 'fmci', av = FALSE, order = TRUE, range = NA,
+              atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+              modeldir = '~/Documents/Work/FinalFiles/500k',
+              outputdir = paste0('~/Documents/Work/plots/SCD/',i)
+      )
+    } else if(i == "mscd") {
+      Heatmap(g1 = i, g2 = 'mmci', av = FALSE, order = TRUE, range = NA,
+              atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+              modeldir = '~/Documents/Work/FinalFiles/500k',
+              outputdir = paste0('~/Documents/Work/plots/SCD/',i)
+      )
+    }
+    # Out of lobe connections (if needed, add here)
+
+    # Out of lobe connections for SCD vs CU
+    if(i == "fscd") {
+      OutLobeConnections(g1 = 'fcn', g2 = i,
+               modelloc = '~/Documents/Work/FinalFiles/500k',
+               atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+               outputloc = paste0('~/Documents/Work/plots/SCD/', i, "/OutLobe"),
+               av = FALSE)
+    } else if(i == "mscd") {
+      OutLobeConnections(g1 = 'mcn', g2 = i,
+               modelloc = '~/Documents/Work/FinalFiles/500k',
+               atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+               outputloc = paste0('~/Documents/Work/plots/SCD/', i, "/OutLobe"),
+               av = FALSE)
+    }
+    # Out of lobe connections for SCD vs MCI
+    if(i == "fscd") {
+      OutLobeConnections(g1 = i, g2 = 'fmci',
+               modelloc = '~/Documents/Work/FinalFiles/500k',
+               atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+               outputloc = paste0('~/Documents/Work/plots/SCD/', i, "/OutLobe"),
+               av = FALSE)
+    } else if(i == "mscd") {
+      OutLobeConnections(g1 = i, g2 = 'mmci',
+               modelloc = '~/Documents/Work/FinalFiles/500k',
+               atlasloc = '~/Documents/Work/FinalFiles/finalAtlas.rds',
+               outputloc = paste0('~/Documents/Work/plots/SCD/', i, "/OutLobe"),
+               av = FALSE)
+    }
+  }
+}
+
+
+regions <- c("")
+
+for(r in regions){
+  print(r)
+  if(TRUE){
+  RegionTACMCMC(g1 = 'fcn',g2 = 'fmci', region = 64)
+  RegionTACMCMC(g1 = 'mcn',g2 = 'mmci', region = 64)
+}
+  }
 
 
 
